@@ -8,11 +8,12 @@ edition = "2018"
 
 [dependencies]
 gl = "0.14.0"
-specs = "0.16.1"
-nalgebra = "0.20.0"
-fixed = "0.5.4"
-
+rusttype = "0.8.2"
+image = { version = "0.23", default-features = false, features = ["png"] }
+nalgebra = "0.21.0"
+glutin = "0.24.0"
 
 [dependencies.sdl2]
 version = "0.33.0"
 features = ["bundled"]
+

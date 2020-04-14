@@ -1,17 +1,33 @@
-// Macro enabled crates
-#[macro_use]
-pub mod macros;
+pub mod backend;
+use backend::*;
+pub mod components;
+use components::*;
+pub mod data_structures;
 
-// Non macro crates
-pub mod ecs;
-mod game_interface;
-pub mod types;
+struct Root;
+struct Msg;
 
-fn main() {
-    let mut sim = game_interface::SkGameInterface::new();
+impl Component<Msg> for Root {
+    fn update(&mut self, _: &SysEvent) -> std::vec::Vec<Msg> {
+        vec![]
+    }
+}
 
-    while sim.should_exit() == false {
-        sim.advance();
-        sim.render();
+impl ViewComponent for Root {
+    fn view(&self) -> backend::Node {
+        Node::Empty
+    }
+}
+
+pub fn main() {
+    let mut backend = build_backend();
+
+    let mut root = Root;
+    loop {
+        let events = backend.poll_events();
+
+        root.update(&events);
+
+        backend.render(root.view());
     }
 }

@@ -1,12 +1,3 @@
 /target
-
-#Added by cargo
-#
-#already existing elements are commented out
-
-#Added by cargo
-#
-#already existing elements are commented out
-
-#/target
-#**/*.rs.bk
+/src/backend/sdl2_gl_pipeline/shaders/gen
+/test_imgs
