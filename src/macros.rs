@@ -1,8 +1,20 @@
 #[macro_export]
-macro_rules! div{
-    ($( $t:tt ),* ) => {
+macro_rules! init_components{
+    ($i:ident, ($( $t:ty ),*) ) => {
+            pub struct $i {}
+
+            impl ComponentLinker for $i {
+                fn register_components(world: &mut World) {
+                    $(
+                      world.register::<$t>();
+                    )*
+                }
+            }
+
             $(
-            $t
+            impl Component for $t {
+                type Storage = VecStorage<Self>;
+            }
             )*
         };
 }
