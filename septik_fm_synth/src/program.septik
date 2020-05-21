@@ -1,0 +1,25 @@
+component FmOperator{
+    inputs is a entity[] where entity has a Fm_OperatorOutput;
+    midi_input is an entity where entity has a MidiInput;
+    output is a number;
+}
+
+component Velocity{ 
+    value is a vec3d;
+}
+
+component Aabb{
+    min is a vec3d where x < 0;
+}
+
+component HitPoints {
+    value is a number where number < 0;
+}
+
+component Velocity{ 
+    value is a vec3d;
+}
+
+component Bullet{ 
+    damage is a number where number < 0 and > 100;
+}

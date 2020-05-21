@@ -1,0 +1,59 @@
+number = ${("-")? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)?}
+bool = ${^"true" | ^"false"}
+string = {"\"" ~ (!"\"" ~ ANY)*  ~ "\""}
+array = {"[" ~ "]"}
+vec3d = {^"vec3d"}
+
+primitive_types = {^"number" | ^"entity" | vec3d }
+complex_primitive = {primitive_types ~ array?}
+
+primitive = {number | bool | string }
+
+type_declaration = {^"is a " ~ complex_primitive}
+
+entity_constraints = {^"has a " ~ component_identifier}
+
+number_constraint_less_than = { ">" ~ number}
+number_constraint_greater_than = { "<" ~ number}
+number_constraints = {number_constraint_less_than | number_constraint_greater_than}
+
+vec3d_x_constraint = {^"x" ~ number_constraints}
+vec3d_y_constraint = {^"y" ~ number_constraints}
+vec3d_z_constraint = {^"z" ~ number_constraints}
+vec3d_constraints = {vec3d_x_constraint | vec3d_y_constraint | vec3d_z_constraint}
+
+constraint_condition = {entity_constraints | number_constraints | vec3d_constraints}
+
+constraint = {
+	^"where " 
+    ~ constraint_condition
+    ~ ("and " ~ constraint_condition)*
+    }
+
+end_statement = {";"}
+
+property = {identifier}
+property_assignment = {
+	property 
+    ~ type_declaration 
+    ~ (constraint)?
+    ~ end_statement    
+    }
+
+component_type = {^"component"}
+component_identifier = {identifier}
+component_declarations = {component_declaration*}
+component_declaration = { component_type ~ component_identifier ~ component_body}
+component_body = {
+  "{" 
+  ~ (property_assignment)*
+  ~ "}"
+  }
+
+
+reserved_words = {component_type }
+
+identifier = @{!reserved_words ~ ASCII_ALPHA ~ ("_" | ASCII_ALPHANUMERIC)*}
+
+
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
