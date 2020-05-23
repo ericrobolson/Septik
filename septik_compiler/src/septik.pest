@@ -13,9 +13,16 @@ type_declaration = {^"is a " ~ complex_primitive}
 
 entity_constraints = {^"has a " ~ component_identifier}
 
-number_constraint_less_than = { ">" ~ number}
-number_constraint_greater_than = { "<" ~ number}
-number_constraints = {number_constraint_less_than | number_constraint_greater_than}
+number_constraint_less_than = { "<" ~ number}
+number_constraint_greater_than = { ">" ~ number}
+number_constraint_greater_than_equal = { ">=" ~ number}
+number_constraint_less_than_equal = { "<=" ~ number}
+number_constraints = {
+	number_constraint_less_than 
+    | number_constraint_less_than_equal
+    | number_constraint_greater_than
+    | number_constraint_greater_than_equal
+    }
 
 vec3d_x_constraint = {^"x" ~ number_constraints}
 vec3d_y_constraint = {^"y" ~ number_constraints}

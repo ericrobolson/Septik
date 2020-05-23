@@ -14,7 +14,7 @@
         "$rustc"
       ],
       "options": {
-        "cwd": "${workspaceRoot}/septik_compiler"
+        "cwd": "${workspaceRoot}/"
       },
       "group": {
         "kind": "build",
