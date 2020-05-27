@@ -25,7 +25,7 @@ pub fn character_action_system(world: &mut World) {
 
         for input in &engine_inputs.inputs {
             match input {
-                InputType::Held(input_type) => {
+                InputType::Held(_, input_type) => {
                     match input_type {
                         EngineInputs::MoveDown => {
                             movement_vec.y += move_speed.value;

@@ -8,11 +8,13 @@ pub use aabb::Aabb;
 mod direction;
 pub use direction::Direction;
 
+pub type PlayerId = u8;
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum InputType {
-    Pressed(EngineInputs),
-    Held(EngineInputs),
-    Released(EngineInputs),
+    Pressed(PlayerId, EngineInputs),
+    Held(PlayerId, EngineInputs),
+    Released(PlayerId, EngineInputs),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

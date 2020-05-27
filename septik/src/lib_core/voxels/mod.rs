@@ -1,3 +1,4 @@
-mod materials;
-mod voxel;
-mod voxel_chunk;
+pub mod chunk_manager;
+pub mod materials;
+pub mod voxel;
+pub mod voxel_chunk;

@@ -1,8 +1,22 @@
 use crate::ecs::Entity;
 use crate::lib_core::{
     math::{FixedNumber, Range, Vec3d},
+    voxels::voxel_chunk::VoxelChunk,
     Aabb, Direction, InputType,
 };
+
+#[derive(Clone)]
+pub struct VoxelChunkComponent {
+    pub chunk: VoxelChunk,
+}
+
+impl VoxelChunkComponent {
+    pub fn new() -> Self {
+        Self {
+            chunk: VoxelChunk::new(),
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct TargetComponent {

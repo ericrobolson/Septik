@@ -22,6 +22,15 @@ pub fn assemblage_player(world: &mut World) {
     world.aabbs[e] = Some(components::AabbComponent::new(aabb));
 }
 
+pub fn assemblage_basic_voxel_chunk(world: &mut World) {
+    let e = world.add_entity();
+
+    let transform = components::TransformComponent::new();
+
+    world.transforms[e] = Some(transform);
+    world.voxel_chunks[e] = Some(components::VoxelChunkComponent::new());
+}
+
 pub fn assemblage_basic_enemy(world: &mut World) {
     let e = world.add_entity();
 

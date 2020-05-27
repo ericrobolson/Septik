@@ -8,6 +8,7 @@ use components::{
     AabbComponent, AiComponent, AilmentsComponent, EnemyComponent, EngineInputsComponent,
     FacingComponent, GdNodeComponent, HitPointComponent, MoveSpeedComponent, PlayerComponent,
     TargetComponent, TargetableComponent, TransformComponent, VelocityComponent,
+    VoxelChunkComponent,
 };
 
 pub type Entity = usize;
@@ -16,7 +17,6 @@ pub type Storage<T> = Vec<Option<T>>;
 
 // TODO: parent/child implementation based off of this:
 // http://bitsquid.blogspot.com/2014/10/building-data-oriented-entity-system.html
-#[derive(Debug)]
 pub struct World {
     next_entity: Entity,
     pub parents: Storage<Entity>,
@@ -34,6 +34,7 @@ pub struct World {
     pub ais: Storage<AiComponent>,
     pub enemies: Storage<EnemyComponent>,
     pub aabbs: Storage<AabbComponent>,
+    pub voxel_chunks: Storage<VoxelChunkComponent>,
 }
 
 impl World {
@@ -56,10 +57,12 @@ impl World {
             ais: generate_storage(),
             enemies: generate_storage(),
             aabbs: generate_storage(),
+            voxel_chunks: generate_storage(),
         };
 
         assemblages::assemblage_player(&mut world);
         assemblages::assemblage_basic_enemy(&mut world);
+        assemblages::assemblage_basic_voxel_chunk(&mut world);
 
         return world;
     }
