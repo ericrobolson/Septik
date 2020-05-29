@@ -8,3 +8,6 @@ mod range;
 pub use range::Range;
 
 pub mod rng;
+
+mod rotation;
+pub use rotation::Rotation3d;

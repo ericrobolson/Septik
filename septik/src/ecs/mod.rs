@@ -3,12 +3,15 @@ pub mod systems;
 
 use crate::lib_core::{EngineInputs, InputType};
 
+use time::{Duration, Instant};
+const MILLISECONDS_IN_SECOND: u64 = 1000;
+
 pub mod components;
 use components::{
     AabbComponent, AiComponent, AilmentsComponent, EnemyComponent, EngineInputsComponent,
-    FacingComponent, GdNodeComponent, HitPointComponent, MoveSpeedComponent, PlayerComponent,
-    TargetComponent, TargetableComponent, TransformComponent, VelocityComponent,
-    VoxelChunkComponent,
+    FacingComponent, GdNodeComponent, HitPointComponent, MeshComponent, MoveSpeedComponent,
+    PlayerComponent, TargetComponent, TargetableComponent, ThirdPersonCameraComponent,
+    TransformComponent, VelocityComponent, VoxelChunkComponent,
 };
 
 pub type Entity = usize;
@@ -18,6 +21,9 @@ pub type Storage<T> = Vec<Option<T>>;
 // TODO: parent/child implementation based off of this:
 // http://bitsquid.blogspot.com/2014/10/building-data-oriented-entity-system.html
 pub struct World {
+    frame_duration: time::Duration,
+    last_frame_execution: time::Instant,
+
     next_entity: Entity,
     pub parents: Storage<Entity>,
     pub ailments: Storage<AilmentsComponent>,
@@ -35,12 +41,23 @@ pub struct World {
     pub enemies: Storage<EnemyComponent>,
     pub aabbs: Storage<AabbComponent>,
     pub voxel_chunks: Storage<VoxelChunkComponent>,
+    pub meshes: Storage<MeshComponent>,
+    pub third_person_cameras: Storage<ThirdPersonCameraComponent>,
 }
 
 impl World {
     pub const MAX_ENTITIES: usize = 1000;
     pub fn new() -> Self {
+        let sim_executions_per_second = 60;
+        let frame_duration = Duration::milliseconds(
+            MILLISECONDS_IN_SECOND as i64 / sim_executions_per_second as i64,
+        );
+
+        let start = Instant::now();
+
         let mut world = Self {
+            frame_duration: frame_duration,
+            last_frame_execution: start,
             next_entity: 0,
             parents: generate_storage(),
             ailments: generate_storage(),
@@ -58,6 +75,8 @@ impl World {
             enemies: generate_storage(),
             aabbs: generate_storage(),
             voxel_chunks: generate_storage(),
+            meshes: generate_storage(),
+            third_person_cameras: generate_storage(),
         };
 
         assemblages::assemblage_player(&mut world);
@@ -87,11 +106,21 @@ impl World {
         }
     }
 
-    pub fn dispatch(&mut self) {
-        systems::character_action_system(self);
-        systems::position_update_system(self);
+    fn ready_to_run(&self) -> bool {
+        let now = Instant::now() - self.last_frame_execution;
+        let run_game_sim = self.frame_duration <= now;
 
-        self.maintain();
+        return run_game_sim;
+    }
+
+    pub fn dispatch(&mut self) {
+        if self.ready_to_run() {
+            systems::character_action_system(self);
+            systems::position_update_system(self);
+
+            self.maintain();
+            self.last_frame_execution = Instant::now();
+        }
     }
 
     pub fn add_entity(&mut self) -> Entity {

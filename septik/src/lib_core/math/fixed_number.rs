@@ -7,10 +7,56 @@ pub struct FixedNumber {
 }
 
 impl FixedNumber {
+    pub fn PI() -> Self {
+        Self { value: fix::PI }
+    }
+
+    pub fn min(a: Self, b: Self) -> Self {
+        if a.value <= b.value {
+            return a;
+        }
+
+        b
+    }
+
+    /// Sine
+    pub fn sin(&self) -> Self {
+        //TODO: Convert to fixed!
+        let v: f32 = (*self).into();
+
+        let sin = v.sin();
+
+        Self::from_f32(sin)
+    }
+
+    /// Cosine
+    pub fn cos(&self) -> Self {
+        //TODO: Convert to fixed!
+        let v: f32 = (*self).into();
+
+        let cos = v.cos();
+
+        Self::from_f32(cos)
+    }
+
+    pub fn max(a: Self, b: Self) -> Self {
+        if a.value <= b.value {
+            return b;
+        }
+
+        a
+    }
+
     fn from_i32(number: i32) -> Self {
-        return Self {
+        Self {
             value: fix::from_num(number),
-        };
+        }
+    }
+
+    fn from_f32(number: f32) -> Self {
+        Self {
+            value: fix::from_num(number),
+        }
     }
 }
 
@@ -18,9 +64,16 @@ impl std::ops::Add for FixedNumber {
     type Output = Self;
 
     fn add(self, rhs: Self) -> <Self as std::ops::Add<Self>>::Output {
-        return Self {
+        Self {
             value: self.value + rhs.value,
-        };
+        }
+    }
+}
+
+impl std::ops::Neg for FixedNumber {
+    type Output = Self;
+    fn neg(self) -> <Self as std::ops::Neg>::Output {
+        Self { value: -self.value }
     }
 }
 
@@ -34,9 +87,9 @@ impl std::ops::Sub for FixedNumber {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> <Self as std::ops::Sub<Self>>::Output {
-        return Self {
+        Self {
             value: self.value - rhs.value,
-        };
+        }
     }
 }
 
@@ -49,9 +102,9 @@ impl std::ops::SubAssign for FixedNumber {
 impl std::ops::Mul for FixedNumber {
     type Output = Self;
     fn mul(self, rhs: Self) -> <Self as std::ops::Mul<Self>>::Output {
-        return Self {
+        Self {
             value: self.value * rhs.value,
-        };
+        }
     }
 }
 
@@ -64,9 +117,9 @@ impl std::ops::MulAssign for FixedNumber {
 impl std::ops::Div for FixedNumber {
     type Output = Self;
     fn div(self, rhs: Self) -> <Self as std::ops::Div<Self>>::Output {
-        return Self {
+        Self {
             value: self.value / rhs.value,
-        };
+        }
     }
 }
 
@@ -78,13 +131,19 @@ impl std::ops::DivAssign for FixedNumber {
 
 impl Into<FixedNumber> for i32 {
     fn into(self) -> FixedNumber {
-        return FixedNumber::from_i32(self);
+        FixedNumber::from_i32(self)
     }
 }
 
 impl Into<f32> for FixedNumber {
     fn into(self) -> f32 {
-        return self.value.to_num::<f32>();
+        self.value.to_num::<f32>()
+    }
+}
+
+impl std::convert::From<f32> for FixedNumber {
+    fn from(value: f32) -> Self {
+        FixedNumber::from_f32(value)
     }
 }
 

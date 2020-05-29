@@ -1,9 +1,30 @@
 use crate::ecs::Entity;
 use crate::lib_core::{
-    math::{FixedNumber, Range, Vec3d},
+    math::{FixedNumber, Range, Rotation3d, Vec3d},
     voxels::voxel_chunk::VoxelChunk,
     Aabb, Direction, InputType,
 };
+
+pub mod mesh_component;
+pub use mesh_component::MeshComponent;
+
+#[derive(Clone)]
+pub struct ThirdPersonCameraComponent {
+    pub relative_position: Vec3d,
+    default_relative_position: Vec3d,
+    pub rotation: Rotation3d,
+}
+
+impl ThirdPersonCameraComponent {
+    pub fn new() -> Self {
+        let default_pos = Vec3d::new((0).into(), 0.into(), (-10).into());
+        return Self {
+            relative_position: default_pos,
+            default_relative_position: default_pos,
+            rotation: Rotation3d::default(),
+        };
+    }
+}
 
 #[derive(Clone)]
 pub struct VoxelChunkComponent {
@@ -86,12 +107,14 @@ pub struct HitPointComponent {
 #[derive(Clone, Debug, PartialEq)]
 pub struct VelocityComponent {
     pub value: Vec3d,
+    pub rotational_velocity: Rotation3d,
 }
 
 impl VelocityComponent {
     pub fn new() -> Self {
         return Self {
             value: Vec3d::default(),
+            rotational_velocity: Rotation3d::default(),
         };
     }
 }
@@ -99,12 +122,14 @@ impl VelocityComponent {
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransformComponent {
     pub position: Vec3d,
+    pub rotation: Rotation3d,
 }
 
 impl TransformComponent {
     pub fn new() -> Self {
         return Self {
             position: Vec3d::default(),
+            rotation: Rotation3d::default(),
         };
     }
 }

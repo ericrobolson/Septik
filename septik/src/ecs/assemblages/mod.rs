@@ -9,10 +9,18 @@ pub fn assemblage_player(world: &mut World) {
 
     world.players[e] = Some(components::PlayerComponent::new());
     world.engine_inputs[e] = Some(components::EngineInputsComponent::new());
-    world.transforms[e] = Some(components::TransformComponent::new());
+    let mut transform = components::TransformComponent::new();
+
+    transform.rotation.yaw_radians = FixedNumber::PI();
+
+    world.transforms[e] = Some(transform);
     world.velocities[e] = Some(components::VelocityComponent::new());
     world.move_speeds[e] = Some(components::MoveSpeedComponent::new(8.into()));
+    world.meshes[e] = Some(components::MeshComponent::new(
+        components::mesh_component::Mesh::Monkey,
+    ));
 
+    world.third_person_cameras[e] = Some(components::ThirdPersonCameraComponent::new());
     let aabb_size = 16;
     let aabb = Aabb::new(
         (-aabb_size, -aabb_size, -aabb_size).into(),

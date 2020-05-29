@@ -25,6 +25,17 @@ impl Vec3d {
     }
 }
 
+impl std::ops::Neg for Vec3d {
+    type Output = Self;
+    fn neg(self) -> <Self as std::ops::Neg>::Output {
+        Self {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
+    }
+}
+
 impl std::ops::Add for Vec3d {
     type Output = Self;
     fn add(self, rhs: Vec3d) -> <Self as std::ops::Add<Vec3d>>::Output {

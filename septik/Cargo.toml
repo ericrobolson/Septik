@@ -8,4 +8,10 @@ edition = "2018"
 
 [dependencies]
 fixed = "0.5.7"
+time = "0.2.16"
+
+
+# Three backend crates
 three = "0.4.0"
+mint = "0.5.1" # three dependency
+cgmath = { version = "0.16", features = ["mint"] }
