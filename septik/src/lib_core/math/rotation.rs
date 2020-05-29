@@ -1,5 +1,11 @@
 use super::*;
 
+pub enum Axi {
+    X,
+    Y,
+    Z,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Rotation3d {
     /// The 'x' rotation
@@ -20,44 +26,46 @@ impl Rotation3d {
     }
 
     pub fn apply_to_vec3d(self, vec3d: Vec3d) -> Vec3d {
-        let x_rot = rotate_around_single_axis(self.pitch_radians, vec3d, Axi::X);
-        let y_rot = rotate_around_single_axis(self.yaw_radians, vec3d, Axi::Y);
-        let z_rot = rotate_around_single_axis(self.roll_radians, vec3d, Axi::Z);
+        let x_rot = Self::rotate_around_single_axis(self.pitch_radians, vec3d, Axi::X);
+        let y_rot = Self::rotate_around_single_axis(self.yaw_radians, vec3d, Axi::Y);
+        let z_rot = Self::rotate_around_single_axis(self.roll_radians, vec3d, Axi::Z);
 
         x_rot + y_rot + z_rot
     }
-}
 
-enum Axi {
-    X,
-    Y,
-    Z,
-}
+    pub fn rotate_vec3d_on_axis(self, vec3d: Vec3d, axis: Axi) -> Vec3d {
+        match axis {
+            Axi::X => Self::rotate_around_single_axis(self.pitch_radians, vec3d, axis),
+            Axi::Y => Self::rotate_around_single_axis(self.yaw_radians, vec3d, axis),
+            Axi::Z => Self::rotate_around_single_axis(self.roll_radians, vec3d, axis),
+        }
+    }
 
-fn rotate_around_single_axis(radians: FixedNumber, vec3d: Vec3d, axis: Axi) -> Vec3d {
-    let x = vec3d.x;
-    let y = vec3d.y;
-    let z = vec3d.z;
+    fn rotate_around_single_axis(radians: FixedNumber, vec3d: Vec3d, axis: Axi) -> Vec3d {
+        let x = vec3d.x;
+        let y = vec3d.y;
+        let z = vec3d.z;
 
-    let rotated_vec = match axis {
-        Axi::X => Vec3d::new(
-            x,
-            y * radians.cos() - z * radians.sin(),
-            y * radians.sin() + z * radians.cos(),
-        ),
-        Axi::Y => Vec3d::new(
-            x * radians.cos() + z * radians.sin(),
-            y,
-            -x * radians.sin() + z * radians.cos(),
-        ),
-        Axi::Z => Vec3d::new(
-            x * radians.cos() - y * radians.sin(),
-            x * radians.sin() + y * radians.cos(),
-            z,
-        ),
-    };
+        let rotated_vec = match axis {
+            Axi::X => Vec3d::new(
+                x,
+                y * radians.cos() - z * radians.sin(),
+                y * radians.sin() + z * radians.cos(),
+            ),
+            Axi::Y => Vec3d::new(
+                x * radians.cos() + z * radians.sin(),
+                y,
+                -x * radians.sin() + z * radians.cos(),
+            ),
+            Axi::Z => Vec3d::new(
+                x * radians.cos() - y * radians.sin(),
+                x * radians.sin() + y * radians.cos(),
+                z,
+            ),
+        };
 
-    rotated_vec
+        rotated_vec
+    }
 }
 
 impl std::ops::Add for Rotation3d {

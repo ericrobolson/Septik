@@ -9,5 +9,5 @@ pub use range::Range;
 
 pub mod rng;
 
-mod rotation;
-pub use rotation::Rotation3d;
+pub mod rotation;
+pub use rotation::{Axi, Rotation3d};

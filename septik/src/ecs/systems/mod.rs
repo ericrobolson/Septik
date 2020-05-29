@@ -3,7 +3,7 @@ pub mod game_logic;
 pub mod platform_specific;
 
 use crate::ecs::{components, Entity, World};
-use crate::lib_core::math::Rotation3d;
+use crate::lib_core::math::{Axi, Rotation3d};
 
 use crate::lib_core::{math::FixedNumber, math::Vec3d, Direction, EngineInputs, InputType};
 
@@ -33,16 +33,16 @@ pub fn character_action_system(world: &mut World) {
                 InputType::Held(_, input_type) => {
                     match input_type {
                         EngineInputs::MoveForward => {
-                            movement_vec.z += move_speed.value;
-                        }
-                        EngineInputs::MoveBack => {
                             movement_vec.z -= move_speed.value;
                         }
+                        EngineInputs::MoveBack => {
+                            movement_vec.z += move_speed.value;
+                        }
                         EngineInputs::MoveRight => {
-                            movement_vec.x -= move_speed.value;
+                            movement_vec.x += move_speed.value;
                         }
                         EngineInputs::MoveLeft => {
-                            movement_vec.x += move_speed.value;
+                            movement_vec.x -= move_speed.value;
                         }
                         EngineInputs::Jump => {
                             movement_vec.y += move_speed.value;
@@ -61,12 +61,29 @@ pub fn character_action_system(world: &mut World) {
 
         // Update velocity
         let mut velocity = velocity.clone().unwrap();
-        velocity.value = movement_vec;
 
         // Calculate rotation based on cursor
-        velocity.rotational_velocity =
-            apply_cursor_to_rotation(summed_cursor_deltas, Rotation3d::default());
+        let rotation = apply_cursor_to_rotation(summed_cursor_deltas, Rotation3d::default());
+        velocity.rotational_velocity = rotation;
 
+        // Rotate the movement velocity
+        velocity.value = {
+            let transform = world.transforms[e].as_ref();
+
+            let rotation = {
+                if transform.is_some() {
+                    let transform = transform.unwrap();
+
+                    rotation + transform.rotation
+                } else {
+                    rotation
+                }
+            };
+
+            let movement_vec = rotation.rotate_vec3d_on_axis(movement_vec, Axi::Y);
+
+            movement_vec
+        };
         world.velocities[e] = Some(velocity);
 
         //TODO: this section should instead add the rotation to the velocity so it can be picked up by the collision detection
@@ -121,11 +138,7 @@ fn update_camera(
 
     let mut camera = camera.unwrap().clone();
 
-    let mut summed_cursor_deltas = summed_cursor_deltas;
-    let mut rotation = apply_cursor_to_rotation(summed_cursor_deltas, camera.rotation);
-
-    camera.rotation = rotation;
-
+    camera.rotation = apply_cursor_to_rotation(summed_cursor_deltas, camera.rotation);
     return Some(camera);
 }
 
@@ -161,6 +174,16 @@ pub fn position_update_system(world: &mut World) {
 
         transform.position += velocity.value;
         transform.rotation += velocity.rotational_velocity;
+
+        let min_pitch: FixedNumber = FixedNumber::PI() / (-2).into();
+        let max_pitch: FixedNumber = FixedNumber::PI() / 2.into();
+
+        // Cap it so that the max/min angles are -90* and 90*
+        transform.rotation.pitch_radians = FixedNumber::max(
+            FixedNumber::min(transform.rotation.pitch_radians, max_pitch),
+            min_pitch,
+        );
+
         world.transforms[e] = Some(transform);
     }
 }

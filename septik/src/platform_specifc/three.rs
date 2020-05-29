@@ -159,12 +159,7 @@ fn update_camera(backend: &mut ThreeRsBackend, world: &World, e: Entity) {
 
             // Testing to figure out best approach
 
-            let rotated_pos: Vec3d = {
-                let rotated_pos = camera.rotation.apply_to_vec3d(camera.relative_position);
-                rotated_pos
-            };
-
-            let actual_pos = rotated_pos + base_pos;
+            let actual_pos = camera.relative_position + base_pos;
 
             backend
                 .cam

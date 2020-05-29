@@ -11,13 +11,13 @@ pub use mesh_component::MeshComponent;
 #[derive(Clone)]
 pub struct ThirdPersonCameraComponent {
     pub relative_position: Vec3d,
-    default_relative_position: Vec3d,
+    pub default_relative_position: Vec3d,
     pub rotation: Rotation3d,
 }
 
 impl ThirdPersonCameraComponent {
     pub fn new() -> Self {
-        let default_pos = Vec3d::new((0).into(), 0.into(), (-10).into());
+        let default_pos = Vec3d::new((0).into(), 0.into(), (10).into());
         return Self {
             relative_position: default_pos,
             default_relative_position: default_pos,

@@ -11,8 +11,6 @@ pub fn assemblage_player(world: &mut World) {
     world.engine_inputs[e] = Some(components::EngineInputsComponent::new());
     let mut transform = components::TransformComponent::new();
 
-    transform.rotation.yaw_radians = FixedNumber::PI();
-
     world.transforms[e] = Some(transform);
     world.velocities[e] = Some(components::VelocityComponent::new());
     world.move_speeds[e] = Some(components::MoveSpeedComponent::new(8.into()));
