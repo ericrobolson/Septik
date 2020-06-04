@@ -11,7 +11,16 @@ fixed = "0.5.7"
 time = "0.2.16"
 
 
+# Rendering specific crates
+nalgebra = "0.21.0"
+
+
 # Three backend crates
 three = "0.4.0"
 mint = "0.5.1" # three dependency
 cgmath = { version = "0.16", features = ["mint"] }
+
+
+# Kiss3d backend crates
+kiss3d = "0.24.1"
+

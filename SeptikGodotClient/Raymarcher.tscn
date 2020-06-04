@@ -1,0 +1,60 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://Raymarcher.tres" type="Material" id=1]
+
+[sub_resource type="GDScript" id=1]
+script/source = "extends Control
+
+
+# Declare member variables here. Examples:
+# var a = 2
+# var b = \"text\"
+
+
+# Called when the node enters the scene tree for the first time.
+func _ready():
+	pass # Replace with function body.
+
+func _process(delta):
+	# Check if menu size has changed
+	if OS.window_size != self.rect_size:
+		update_size()
+
+func update_size():
+	var window_size = OS.window_size
+	recalculate(window_size)
+
+const inner_scaling_factor = 2
+
+func recalculate(size):	
+	$ColorRect.rect_size = (size / inner_scaling_factor)
+	$ColorRect.rect_scale = Vector2(inner_scaling_factor, inner_scaling_factor)
+"
+
+[node name="Control" type="Control"]
+pause_mode = 2
+material = ExtResource( 1 )
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = SubResource( 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ColorRect" type="ColorRect" parent="."]
+pause_mode = 2
+material = ExtResource( 1 )
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 0.650696
+margin_top = 1.44156
+margin_right = 0.650635
+margin_bottom = 1.44153
+rect_scale = Vector2( 1.02718, 0.964697 )
+__meta__ = {
+"_edit_use_anchors_": false
+}

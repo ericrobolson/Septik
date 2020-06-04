@@ -15,7 +15,7 @@ pub enum InputType {
     Pressed(PlayerId, EngineInputs),
     Held(PlayerId, EngineInputs),
     Released(PlayerId, EngineInputs),
-    /// Cursor movement normalized to (-1,-1,0) to (1,1,0), where (0,0,0) is the center of the screen.
+    /// Cursor movement normalized to (-1,-1,0) {bottom left} to (1,1,0) {top right}, where (0,0,0) is the center of the screen.
     CursorNormalized(PlayerId, math::Vec3d),
 }
 
