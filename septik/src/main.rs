@@ -1,6 +1,7 @@
 pub mod ecs;
 pub mod lib_core;
 pub mod platform_specifc;
+pub mod util;
 
 fn main() {
     let mut win_gfx = platform_specifc::WindowGfxBuilder::build();
