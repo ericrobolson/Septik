@@ -58,68 +58,102 @@ float sdRoundBox( vec3 p, vec3 b, float r )
   return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - r;
 }
 
-float sdVoxels(vec3 position){	
-	// Note: tex size is 2x voxel_cube_length, meaning that the total voxel size is voxel_cube_length^3
-	
-	
+float sdVoxels(vec3 position){		
 	float len = 0.0;
 	
 	vec3 voxelOffset = vec3(0.0, 0.0, 0.0);
 	float voxel_size = 0.6;
-	
-	//TODO: Convert to use some sort of hashing function, to only grab shit close to the position
-	
+		
 	// This is a bad implementation, but is mainly to get a dumb version working
 	int x,y,z = 0;
 		
 	float min_dist = 999999999999999999.0;
-	
-	float prevMinDist = 0.0;
-	bool prevMinDistSet = false;
-	
-	for (int texx = 0; texx < 8; texx++){
-		for (int texy = 0; texy < 8; texy++){				
-			vec3 voxelPos = vec3(float(x), float(y), float(z));
-			voxelPos *= voxel_size;
-			voxelPos += voxelOffset;
+		
+	bool use_dumb_code = false;	
+	if (!use_dumb_code){
+		// Pseudocode:		
+		// If position.x < min_voxel xpos, use smallest xindex
+		// elIf position.x > max_voxel xpos, use largest xindex
+		// else: map position.x to the xindex
+		// Repeat for y, z
+		// That gets your voxel index
+		// Then, map your voxel index to the tex xy indexes
+		// If active, return the length
+		// Else, calculate next dist?
+		
+		
+		//TODO: get actual voxel position/indexes closest to the position		
+		vec3 voxelPos = vec3(float(x), float(y), float(z));
+		voxelPos *= voxel_size;
+		voxelPos += voxelOffset;
+		
+		//TODO: Using the voxel position, calculate the texture x,y coordinates that match the voxel
+		int texx = 0;
+		int texy = 0;
+		
+		ivec2 texCoords = ivec2(texx, texy);
+		
+		vec4 colors = texelFetch(voxel_data, texCoords, 0);
+		
+		// alpha represents the voxel's active bit
+		bool voxelActive = 0.0 < colors.a;
+		
+		// Only draw if true
+		if (voxelActive == true){							
+			float length_voxel = sdSphere(position, voxelPos, voxel_size);					
+			min_dist = length_voxel;
+		}
+	}	
+	// OLD CODE - DUMB IMPLEMENTATION
+	else {	
+		float prevMinDist = 0.0;
+		bool prevMinDistSet = false;
+		
+		for (int texx = 0; texx < 8; texx++){
+			for (int texy = 0; texy < 8; texy++){				
+				vec3 voxelPos = vec3(float(x), float(y), float(z));
+				voxelPos *= voxel_size;
+				voxelPos += voxelOffset;
+					
+				if (prevMinDistSet == false){
+					prevMinDistSet = true;
+					prevMinDist = length(position - voxelPos);
+				} 
 				
-			if (prevMinDistSet == false){
-				prevMinDistSet = true;
-				prevMinDist = length(position - voxelPos);
-			} 
-			
-			float currentDist = length(position - voxelPos);
-			
-			if (currentDist <= prevMinDist){
-				prevMinDist = currentDist;							
+				float currentDist = length(position - voxelPos);
+				
+				if (currentDist <= prevMinDist){
+					prevMinDist = currentDist;							
+								
+					ivec2 texCoords = ivec2(texx, texy);
+					
+					vec4 colors = texelFetch(voxel_data, texCoords, 0);
+					
+					// alpha represents the voxel's active bit
+					bool voxelActive = 0.0 < colors.a;
+					
+					// Only draw if true
+					if (voxelActive == true){							
+						//float length_voxel = sdSphere(position, voxelPos, voxel_size);		
+						float length_voxel = length(position - voxelPos) - voxel_size;
+					
+						if (length_voxel < min_dist){
+							min_dist = length_voxel;
 							
-				ivec2 texCoords = ivec2(texx, texy);
-				
-				vec4 colors = texelFetch(voxel_data, texCoords, 0);
-				
-				// alpha represents the voxel's active bit
-				bool voxelActive = 0.0 < colors.a;
-				
-				// Only draw if true
-				if (voxelActive == true){							
-					float length_voxel = sdSphere(position, voxelPos, voxel_size);		
-					//float length_voxel = length(position - voxelPos);
-				
-					if (length_voxel < min_dist){
-						min_dist = length_voxel;
+						}
 					}
 				}
-			}
-			
-			// Increase x,y,z
-			x += 1;
-			if (voxel_cube_length <= x){
-				x = 0;
-				y += 1;
 				
-				if (voxel_cube_length <= y){
-					y = 0;
-					z += 1;
+				// Increase x,y,z
+				x += 1;
+				if (voxel_cube_length <= x){
+					x = 0;
+					y += 1;
+					
+					if (voxel_cube_length <= y){
+						y = 0;
+						z += 1;
+					}
 				}
 			}
 		}
@@ -210,7 +244,7 @@ vec3 raymarch(vec3 rayDirection){
 	for (int i = 0; depth < MAX_DISTANCE && i < MAX_STEPS; ++i){
 		vec3 position = cameraPosition + rayDirection * depth;
 		float dist = sdf(position);
-		if (dist < MINIMUM_HIT_DISTANCE) {
+		if (dist < MINIMUM_HIT_DISTANCE) {				
 			    return blinnPhong(
 					position
 					, lightPos
@@ -233,8 +267,6 @@ vec3 raymarch(vec3 rayDirection){
 void fragment(){	
 	vec2 resolution = 1.0 / SCREEN_PIXEL_SIZE;
 
-	//resolution = VIEWPORT_SIZE;
-	
 	vec3 rayDir = getRayDirection(resolution, UV);
 	
 	vec3 raymarchColor = raymarch(rayDir);
@@ -253,7 +285,7 @@ shader_param/eye = Vector3( -0.466, 0.175, -0.935 )
 shader_param/up = Vector3( 0, 1, 0 )
 shader_param/MAX_STEPS = 450
 shader_param/MAX_DISTANCE = 40.0
-shader_param/MINIMUM_HIT_DISTANCE = 1e-05
+shader_param/MINIMUM_HIT_DISTANCE = 0.001
 shader_param/DERIVATIVE_STEP = 0.0001
 shader_param/globalAmbient = 0.1
 shader_param/globalDiffuse = 1.0
