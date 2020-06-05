@@ -58,11 +58,51 @@ float sdRoundBox( vec3 p, vec3 b, float r )
   return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - r;
 }
 
+
+int closestIndex(float pos, int row_size, float row_pos, float voxel_size){
+	float min_index_pos = row_pos;
+	float max_index_pos = float(row_size) * voxel_size + row_pos;
+	
+	// If position < min_voxel pos, use smallest index
+	if (pos < min_index_pos){
+		return 0;
+	} 
+	// else if position > max_voxel pos, use largest index
+	else if (max_index_pos < pos){
+		return row_size - 1;
+	}
+	
+	// Map the position to the index range
+	pos -= row_pos;
+	pos /= voxel_size;
+	
+	return int(pos);
+}
+
+ivec2 voxel_index_to_texture_index(int x, int y, int z, int row_len){
+	
+	
+	//TODO!!
+	return ivec2(0);
+}
+
+vec3 voxel_index_to_position(int x, int y, int z, vec3 voxelOffset, float voxel_size){
+	vec3 p = vec3(float(x), float(y), float(z));
+	p *= voxel_size;
+	p += voxelOffset;
+	
+	return p;
+}
+
+float sdCube(vec3 position, vec3 boxPos, float boxSize){
+	return sdSphere(position, boxPos, boxSize);
+}
+
 float sdVoxels(vec3 position){		
 	float len = 0.0;
 	
 	vec3 voxelOffset = vec3(0.0, 0.0, 0.0);
-	float voxel_size = 0.6;
+	float voxel_size = 1.0;
 		
 	// This is a bad implementation, but is mainly to get a dumb version working
 	int x,y,z = 0;
@@ -74,35 +114,23 @@ float sdVoxels(vec3 position){
 		// Pseudocode:		
 		// If position.x < min_voxel xpos, use smallest xindex
 		// elIf position.x > max_voxel xpos, use largest xindex
-		// else: map position.x to the xindex
-		// Repeat for y, z
-		// That gets your voxel index
+		int x_index = closestIndex(position.x, voxel_cube_length, voxelOffset.x, voxel_size);
+		int y_index = closestIndex(position.y, voxel_cube_length, voxelOffset.y, voxel_size);
+		int z_index = closestIndex(position.z, voxel_cube_length, voxelOffset.z, voxel_size);
+				
 		// Then, map your voxel index to the tex xy indexes
-		// If active, return the length
-		// Else, calculate next dist?
+		ivec2 tex_index = voxel_index_to_texture_index(x_index, y_index, z_index, voxel_cube_length);
+		vec4 voxel_color_data = texelFetch(voxel_data, tex_index, 0);
+		bool voxelActive = 0.0 < voxel_color_data.a;
 		
-		
-		//TODO: get actual voxel position/indexes closest to the position		
-		vec3 voxelPos = vec3(float(x), float(y), float(z));
-		voxelPos *= voxel_size;
-		voxelPos += voxelOffset;
-		
-		//TODO: Using the voxel position, calculate the texture x,y coordinates that match the voxel
-		int texx = 0;
-		int texy = 0;
-		
-		ivec2 texCoords = ivec2(texx, texy);
-		
-		vec4 colors = texelFetch(voxel_data, texCoords, 0);
-		
-		// alpha represents the voxel's active bit
-		bool voxelActive = 0.0 < colors.a;
-		
-		// Only draw if true
-		if (voxelActive == true){							
-			float length_voxel = sdSphere(position, voxelPos, voxel_size);					
-			min_dist = length_voxel;
+		if (voxelActive){
+			vec3 voxelPosition = voxel_index_to_position(x_index, y_index, z_index, voxelOffset, voxel_size);
+			
+			return sdCube(position, voxelPosition, voxel_size);
 		}
+		
+		// If active, return the length
+		// Else, continue marching to get the next active voxel		
 	}	
 	// OLD CODE - DUMB IMPLEMENTATION
 	else {	
@@ -280,8 +308,8 @@ shader = SubResource( 1 )
 shader_param/voxel_cube_length = 4
 shader_param/use_texture = false
 shader_param/fov = 45.0
-shader_param/cameraPosition = Vector3( 3.709, -0.228, 6.584 )
-shader_param/eye = Vector3( -0.466, 0.175, -0.935 )
+shader_param/cameraPosition = Vector3( 0, 2.007, 12.045 )
+shader_param/eye = Vector3( 0, 0, -1 )
 shader_param/up = Vector3( 0, 1, 0 )
 shader_param/MAX_STEPS = 450
 shader_param/MAX_DISTANCE = 40.0
