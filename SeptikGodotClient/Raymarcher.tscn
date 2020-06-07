@@ -1,6 +1,7 @@
-[gd_scene load_steps=3 format=2]
+[gd_scene load_steps=4 format=2]
 
 [ext_resource path="res://Raymarcher.tres" type="Material" id=1]
+[ext_resource path="res://SeptikGameEngine.gdns" type="Script" id=2]
 
 [sub_resource type="GDScript" id=1]
 script/source = "extends Control
@@ -58,3 +59,6 @@ margin_bottom = 51.9907
 __meta__ = {
 "_edit_use_anchors_": false
 }
+
+[node name="Node2D" type="Node2D" parent="."]
+script = ExtResource( 2 )

@@ -1,6 +1,7 @@
 use crate::ecs::World;
 use crate::lib_core::{EngineInputs, InputType};
 
+pub mod godot;
 mod kiss3d;
 mod three;
 
