@@ -12,7 +12,7 @@ pub trait WindowGfx {
 pub struct WindowGfxBuilder {}
 impl WindowGfxBuilder {
     pub fn build() -> Box<dyn WindowGfx> {
-        //return Box::new(three::ThreeRsBackend::new());
-        return Box::new(kiss3d::Kiss3dBackend::new());
+        return Box::new(three::ThreeRsBackend::new());
+        //   return Box::new(kiss3d::Kiss3dBackend::new());
     }
 }

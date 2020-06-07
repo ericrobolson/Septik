@@ -2,25 +2,105 @@
   // See https://go.microsoft.com/fwlink/?LinkId=733558
   // for the documentation about the tasks.json format
   "version": "2.0.0",
-  "tasks": [
+  {
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+   "tasks": [
     {
-      "label": "build client",
+      "label": "x86_64-pc-windows-msvc",
       "type": "shell",
       "command": "cargo",
       "args": [
-        "build"
+        "build",
+        "--target",
+        "x86_64-pc-windows-msvc"
       ],
       "problemMatcher": [
         "$rustc"
       ],
       "options": {
-        "cwd": "${workspaceRoot}/septik_compiler"
+        "cwd": "${workspaceRoot}/septik"
       },
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
+      "group": "build"
     },
-   
+    {
+      "label": "copy_to_godot_windows-x86_64",
+      "type": "shell",
+      "command": "copy",
+      "args": [
+        "septik/target/x86_64-pc-windows-msvc/debug/septik.dll",
+        "SeptikGodotClient/dlls/x86_64-pc-windows-msvc.dll"
+      ],
+      "options": {
+        "cwd": "${workspaceRoot}/"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "i686-pc-windows-msvc",
+      "type": "shell",
+      "command": "cargo",
+      "args": [
+        "build",
+        "--target",
+        "i686-pc-windows-msvc"
+      ],
+      "problemMatcher": [
+        "$rustc"
+      ],
+      "options": {
+        "cwd": "${workspaceRoot}/septik"
+      },
+      "group": "build"
+    },
+    {
+      "label": "copy_to_godot_i686-pc-windows-msvc",
+      "type": "shell",
+      "command": "copy",
+      "args": [
+        "septik/target/i686-pc-windows-msvc/debug/septik.dll",
+        "SeptikGodotClient/dlls/i686-pc-windows-msvc.dll"
+      ],
+      "options": {
+        "cwd": "${workspaceRoot}/"
+      },
+      "problemMatcher": []
+    },
+     {
+      "label": "clear_existing_builds",
+      "type": "shell",
+      "command": "del",
+      "args": [        
+        "*.*"
+      ],
+      "options": {
+        "cwd": "${workspaceRoot}/SeptikGodotClient/dlls"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "copy_to_godot",
+      "dependsOn": [
+        "copy_to_godot_windows-x86_64",
+        "copy_to_godot_i686-pc-windows-msvc"
+      ],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "build_all_targets",
+      "dependsOn": [
+        "clear_existing_builds",
+        "x86_64-pc-windows-msvc",
+        "i686-pc-windows-msvc",
+        "copy_to_godot"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "group": "build"
+
+      
+    }
   ]
 }

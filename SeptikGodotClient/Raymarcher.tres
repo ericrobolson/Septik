@@ -39,26 +39,8 @@ uniform vec3 ambientColor = vec3(1.0, 1.0, 1.0); // The ambient light's color
 
 // Functionality //
 
-// Signed distance function for spheres
-// Additional SDF's: https://www.iquilezles.org/www/articles/distfunctions/distfunctions.htm
-float sdSphere(vec3 position, vec3 center, float radius){
-	return length(center - position) - radius;
-}
 
-float sdBox( vec3 position, vec3 b )
-{
-  vec3 q = abs(position) - b;
-  return length(max(q,0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
-}
-
-
-float sdRoundBox( vec3 p, vec3 b, float r )
-{		
-  vec3 q = abs(p) - b;
-  return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - r;
-}
-
-
+/*
 int closestIndex(float pos, int row_size, float row_pos, float voxel_size){
 	float min_index_pos = row_pos;
 	float max_index_pos = float(row_size) * voxel_size + row_pos;
@@ -74,7 +56,7 @@ int closestIndex(float pos, int row_size, float row_pos, float voxel_size){
 	
 	// Map the position to the index range
 	pos -= row_pos;
-	pos /= voxel_size;
+	pos *= voxel_size;
 	
 	return int(pos);
 }
@@ -88,21 +70,32 @@ ivec2 voxel_index_to_texture_index(int x, int y, int z, int row_len){
 
 vec3 voxel_index_to_position(int x, int y, int z, vec3 voxelOffset, float voxel_size){
 	vec3 p = vec3(float(x), float(y), float(z));
+	
 	p *= voxel_size;
 	p += voxelOffset;
 	
 	return p;
 }
 
-float sdCube(vec3 position, vec3 boxPos, float boxSize){
-	return sdSphere(position, boxPos, boxSize);
+float sdCube(vec3 position, vec3 boxPos, float boxSize){	
+	vec3 q = abs(position) - boxPos;
+  	return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - boxSize;
+	return dot(position, normalize(boxPos)) + boxSize;
+	//return sdSphere(position, boxPos, boxSize);
 }
+
+float sdPlane( vec3 p, vec3 n, float h )
+{
+  // n must be normalized
+  return dot(p,n) + h;
+}
+
 
 float sdVoxels(vec3 position){		
 	float len = 0.0;
 	
 	vec3 voxelOffset = vec3(0.0, 0.0, 0.0);
-	float voxel_size = 1.0;
+	float voxel_size = 0.3;
 		
 	// This is a bad implementation, but is mainly to get a dumb version working
 	int x,y,z = 0;
@@ -123,10 +116,25 @@ float sdVoxels(vec3 position){
 		vec4 voxel_color_data = texelFetch(voxel_data, tex_index, 0);
 		bool voxelActive = 0.0 < voxel_color_data.a;
 		
+		if (x_index % 2 == 0){
+		//	voxelActive = false;
+		}
+		
 		if (voxelActive){
 			vec3 voxelPosition = voxel_index_to_position(x_index, y_index, z_index, voxelOffset, voxel_size);
 			
-			return sdCube(position, voxelPosition, voxel_size);
+			vec3 voxelBoxSize = vec3(1.0);
+			voxelBoxSize.x *= 2.0;
+			
+			voxelBoxSize *= voxel_size;
+			
+			vec3 vsize = vec3(voxel_size / 3.0);
+			
+			return sdRoundBox(position - voxelPosition, voxelBoxSize, 0.04);
+			
+			//return sdRoundBox(position - voxelPosition, voxelBoxSize, 0.03);
+			
+			return sdBox(position - voxelPosition, vsize);			
 		}
 		
 		// If active, return the length
@@ -189,16 +197,84 @@ float sdVoxels(vec3 position){
 		
 	return min_dist;
 }
+*/
 
+
+float dot2_vec2(in vec2 v) {
+	return dot(v,v);
+}
+
+float dot2_vec3(in vec3 v) {
+	return dot(v,v);
+}
+
+float ndot(in vec2 a, in vec2 b) {
+	return a.x * b.x - a.y * b.y;
+}
+
+
+// Signed distance function for spheres
+// Additional SDF's: https://www.iquilezles.org/www/articles/distfunctions/distfunctions.htm
+float sdSphere(vec3 position, vec3 center, float radius){
+	return length(center - position) - radius;
+}
+
+float sdBox( vec3 position, vec3 b )
+{
+  vec3 q = abs(position) - b;
+  return length(max(q,0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+}
+
+
+float sdRoundBox( vec3 p, vec3 b, float r )
+{		
+  vec3 q = abs(p) - b;
+  return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - r;
+}
+
+float sdTorus(vec3 position, vec2 torus){
+	vec2 q = vec2(length(position.xz) - torus.x, position.y);
+	return length(q) - torus.y;
+}
+
+float sdfOpUnion(float d1, float d2){
+	return min (d1, d2);
+}
+
+float sdfOpSubtraction(float d1, float d2){
+	return max(-d1, d2);
+}
+
+
+float sdfOpIntersection(float d1, float d2){
+	return max(d1, d2);
+}
+
+
+float sdfOpSmoothUnion(float d1, float d2, float k){
+	float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) - k*h*(1.0-h);
+}
+
+float sdfOpSmoothSubtraction(float d1, float d2, float k){
+	float h = clamp( 0.5 - 0.5*(d2+d1)/k, 0.0, 1.0 );
+    return mix( d2, -d1, h ) + k*h*(1.0-h);
+}
+
+
+float sdfOpSmoothIntersection(float d1, float d2, float k){
+	float h = clamp( 0.5 - 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) + k*h*(1.0-h);
+}
 
 // Signed distance function given a position
 float sdf(vec3 pos){			
 	//return sdTexture(pos);
-	return sdVoxels(pos);
+	//return sdVoxels(pos);
 	
-	if (use_texture){
-		return sdRoundBox(pos, vec3(.1), .3);	
-	}
+	return sdfOpSmoothUnion(sdTorus(pos, vec2(1.0, 0.4)), sdSphere(pos, vec3(0), 1), 0.3);
+	
+	return sdTorus(pos, vec2(1.0, 0.4));
 	
 	return sdSphere(pos, vec3(0), 1);
 }
@@ -305,21 +381,21 @@ void fragment(){
 
 [resource]
 shader = SubResource( 1 )
-shader_param/voxel_cube_length = 4
+shader_param/voxel_cube_length = 5
 shader_param/use_texture = false
 shader_param/fov = 45.0
-shader_param/cameraPosition = Vector3( 0, 2.007, 12.045 )
-shader_param/eye = Vector3( 0, 0, -1 )
+shader_param/cameraPosition = Vector3( 0.089, 2.123, 3.221 )
+shader_param/eye = Vector3( 0, -0.561, -1 )
 shader_param/up = Vector3( 0, 1, 0 )
-shader_param/MAX_STEPS = 450
-shader_param/MAX_DISTANCE = 40.0
-shader_param/MINIMUM_HIT_DISTANCE = 0.001
+shader_param/MAX_STEPS = 275
+shader_param/MAX_DISTANCE = 20.0
+shader_param/MINIMUM_HIT_DISTANCE = 1e-05
 shader_param/DERIVATIVE_STEP = 0.0001
 shader_param/globalAmbient = 0.1
 shader_param/globalDiffuse = 1.0
 shader_param/globalSpecular = 1.0
 shader_param/globalSpecularExponent = 63.0
-shader_param/lightPos = Vector3( -2.171, 5, 3 )
-shader_param/lightColor = Vector3( 0.735, 1.064, 0.723 )
+shader_param/lightPos = Vector3( -1.014, 5, 3.441 )
+shader_param/lightColor = Vector3( 0.457, 0.645, 0.723 )
 shader_param/ambientColor = Vector3( 1, 0.783, 1 )
 shader_param/voxel_data = ExtResource( 1 )
