@@ -47,6 +47,9 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
+[node name="Node2D" type="Node2D" parent="."]
+script = ExtResource( 2 )
+
 [node name="ColorRect" type="ColorRect" parent="."]
 pause_mode = 2
 material = ExtResource( 1 )
@@ -59,6 +62,3 @@ margin_bottom = 51.9907
 __meta__ = {
 "_edit_use_anchors_": false
 }
-
-[node name="Node2D" type="Node2D" parent="."]
-script = ExtResource( 2 )

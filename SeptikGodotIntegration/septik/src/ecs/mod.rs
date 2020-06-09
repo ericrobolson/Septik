@@ -47,8 +47,6 @@ pub struct World {
 
 impl World {
     pub const MAX_ENTITIES: usize = 1000;
-
-    /// Initialize a new world that represents the game engine
     pub fn new() -> Self {
         let sim_executions_per_second = 60;
         let frame_duration = Duration::milliseconds(
@@ -88,12 +86,10 @@ impl World {
         return world;
     }
 
-    /// Retrieve the set of entities to process
     pub fn entities(&self) -> std::ops::Range<usize> {
         0..self.next_entity
     }
 
-    /// Register a set of inputs for processing
     pub fn register_player_inputs(&mut self, inputs: &Vec<InputType>) {
         for e in self.entities() {
             let player = &self.players[e];
@@ -110,7 +106,6 @@ impl World {
         }
     }
 
-    /// Return true if ready to run, or false if not
     fn ready_to_run(&self) -> bool {
         let now = Instant::now() - self.last_frame_execution;
         let run_game_sim = self.frame_duration <= now;
@@ -118,7 +113,6 @@ impl World {
         return run_game_sim;
     }
 
-    /// Dispatch all systems and execute if ready to run
     pub fn dispatch(&mut self) {
         if self.ready_to_run() {
             systems::character_action_system(self);
@@ -129,7 +123,6 @@ impl World {
         }
     }
 
-    /// Add a new entity to the world
     pub fn add_entity(&mut self) -> Entity {
         let e = self.next_entity;
 

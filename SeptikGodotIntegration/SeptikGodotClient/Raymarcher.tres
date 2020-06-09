@@ -272,11 +272,10 @@ float sdf(vec3 pos){
 	//return sdTexture(pos);
 	//return sdVoxels(pos);
 	
-	return sdfOpSmoothUnion(sdTorus(pos, vec2(1.0, 0.4)), sdSphere(pos, vec3(0), 1), 0.3);
+	// example op:
+	//return sdfOpSmoothUnion(sdTorus(pos, vec2(1.0, 0.4)), sdSphere(pos, vec3(0), 1), 0.3);
 	
-	return sdTorus(pos, vec2(1.0, 0.4));
-	
-	return sdSphere(pos, vec3(0), 1);
+	return min(sdTorus(pos, vec2(1.0, 0.4)), sdSphere(pos, vec3(0), 1));
 }
 
 // Given a resolution and a UV, calculate the ray direction
