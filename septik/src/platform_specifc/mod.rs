@@ -2,6 +2,7 @@ use crate::ecs::World;
 use crate::lib_core::{EngineInputs, InputType};
 
 mod kiss3d;
+mod sdl2;
 mod three;
 
 pub trait WindowGfx {
@@ -16,7 +17,6 @@ pub struct WindowGfxBuilder {}
 impl WindowGfxBuilder {
     /// Build the window/gfx
     pub fn build() -> Box<dyn WindowGfx> {
-        return Box::new(three::ThreeRsBackend::new());
-        //   return Box::new(kiss3d::Kiss3dBackend::new());
+        return Box::new(sdl2::Sdl2Backend::new());
     }
 }
