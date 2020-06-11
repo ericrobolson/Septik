@@ -8,10 +8,10 @@ const MILLISECONDS_IN_SECOND: u64 = 1000;
 
 pub mod components;
 use components::{
-    AabbComponent, AiComponent, AilmentsComponent, EnemyComponent, EngineInputsComponent,
-    FacingComponent, GdNodeComponent, HitPointComponent, MeshComponent, MoveSpeedComponent,
-    PlayerComponent, TargetComponent, TargetableComponent, ThirdPersonCameraComponent,
-    TransformComponent, VelocityComponent, VoxelChunkComponent,
+    unit_components::UnitComponent, AabbComponent, AiComponent, AilmentsComponent, EnemyComponent,
+    EngineInputsComponent, FacingComponent, GdNodeComponent, HitPointComponent, MeshComponent,
+    MoveSpeedComponent, PlayerComponent, TargetComponent, TargetableComponent,
+    ThirdPersonCameraComponent, TransformComponent, VelocityComponent, VoxelChunkComponent,
 };
 
 pub type Entity = usize;
@@ -43,6 +43,7 @@ pub struct World {
     pub voxel_chunks: Storage<VoxelChunkComponent>,
     pub meshes: Storage<MeshComponent>,
     pub third_person_cameras: Storage<ThirdPersonCameraComponent>,
+    pub units: Storage<UnitComponent>,
 }
 
 impl World {
@@ -79,6 +80,7 @@ impl World {
             voxel_chunks: generate_storage(),
             meshes: generate_storage(),
             third_person_cameras: generate_storage(),
+            units: generate_storage(),
         };
 
         assemblages::assemblage_player(&mut world);

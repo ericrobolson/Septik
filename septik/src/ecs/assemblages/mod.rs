@@ -4,6 +4,13 @@ use crate::lib_core::{
     Aabb,
 };
 
+pub fn assemble_basic_unit(world: &mut World) {
+    let e = world.add_entity();
+    world.units[e] = Some(components::unit_components::UnitComponent::default());
+    let mut transform = components::TransformComponent::new();
+    world.transforms[e] = Some(transform);
+}
+
 pub fn assemblage_player(world: &mut World) {
     let e = world.add_entity();
 
