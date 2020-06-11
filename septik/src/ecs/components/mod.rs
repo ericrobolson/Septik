@@ -5,6 +5,8 @@ use crate::lib_core::{
     Aabb, Direction, InputType,
 };
 
+pub mod unit_components;
+
 pub mod mesh_component;
 pub use mesh_component::MeshComponent;
 
