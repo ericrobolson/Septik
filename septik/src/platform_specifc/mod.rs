@@ -1,7 +1,9 @@
 use crate::ecs::World;
 use crate::lib_core::{EngineInputs, InputType};
 
+pub mod file_io;
 mod kiss3d;
+mod opengl;
 mod sdl2;
 mod three;
 

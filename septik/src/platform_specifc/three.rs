@@ -1,7 +1,7 @@
 use super::{WindowGfx, *};
 use crate::lib_core::math::Rotation3d;
 
-use crate::ecs::{components::mesh_component, Entity, World};
+use crate::ecs::{components::gfx_components, Entity, World};
 use crate::lib_core::{math::Vec3d, EngineInputs, InputType};
 
 extern crate cgmath;
@@ -201,7 +201,7 @@ fn draw_meshes(backend: &mut ThreeRsBackend, world: &World, e: Entity) {
         // The mesh does not exist, so create it
         else {
             let (mut group_map, _meshes) = match mesh.mesh {
-                mesh_component::Mesh::Monkey => {
+                gfx_components::Mesh::Monkey => {
                     let mut args = env::args();
                     let obj_path = concat!(env!("CARGO_MANIFEST_DIR"), "/test_data/untitled.obj");
                     let path = args.nth(1).unwrap_or(obj_path.into());

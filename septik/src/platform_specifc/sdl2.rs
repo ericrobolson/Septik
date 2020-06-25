@@ -1,11 +1,13 @@
 use super::{WindowGfx, *};
 use crate::lib_core::math::Rotation3d;
 
-use crate::ecs::{components::mesh_component, Entity, World};
+use crate::ecs::{Entity, World};
 use crate::lib_core::{math::Vec3d, EngineInputs, InputType};
 
 extern crate gl;
 extern crate sdl2;
+
+use crate::platform_specifc::opengl::{OpenGlRenderer, Resolution};
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -16,6 +18,7 @@ pub struct Sdl2Backend {
     event_pump: sdl2::EventPump,
     context: sdl2::video::GLContext,
     window: sdl2::video::Window,
+    opengl_backend: opengl::OpenGlRenderer,
     inputs: Vec<InputType>,
 }
 
@@ -28,18 +31,29 @@ impl Sdl2Backend {
         gl_attr.set_context_profile(GLProfile::Core);
         gl_attr.set_context_version(3, 3);
 
+        const window_height: i32 = 1080;
+        const window_width: i32 = 1980;
         let window = video_subsystem
-            .window("Window", 800, 600)
+            .window("Window", window_width as u32, window_height as u32)
             .opengl()
             .build()
             .unwrap();
 
-        // Unlike the other example above, nobody created a context for your window, so you need to create one.
         let ctx = window.gl_create_context().unwrap();
+
         gl::load_with(|name| video_subsystem.gl_get_proc_address(name) as *const _);
 
         debug_assert_eq!(gl_attr.context_profile(), GLProfile::Core);
         debug_assert_eq!(gl_attr.context_version(), (3, 3));
+
+        const scaling_fac: u32 = 1;
+        let resolution = Resolution {
+            height: window_height as u32 / scaling_fac,
+            width: window_width as u32 / scaling_fac,
+        };
+
+        let mut opengl_backend = OpenGlRenderer::new(resolution);
+        opengl_backend.set_viewport(window_width, window_height);
 
         let mut event_pump = sdl_context.event_pump().unwrap();
 
@@ -48,6 +62,7 @@ impl Sdl2Backend {
             event_pump: event_pump,
             window: window,
             context: ctx,
+            opengl_backend: opengl_backend,
             inputs: vec![],
         };
     }
@@ -80,10 +95,7 @@ impl WindowGfx for Sdl2Backend {
         self.read_input();
         // Rendering portion:
         {
-            unsafe {
-                gl::ClearColor(0.6, 0.0, 0.8, 1.0);
-                gl::Clear(gl::COLOR_BUFFER_BIT);
-            }
+            self.opengl_backend.render(world);
 
             self.window.gl_swap_window();
         }

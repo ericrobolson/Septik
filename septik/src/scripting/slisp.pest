@@ -1,0 +1,27 @@
+number = ${ ("-")? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
+boolean = { ^"true" | "false" }
+string = { "\"" ~ (!"\"" ~ ANY)*  ~ "\"" }
+
+symbol = @{ ^"list" | ^"head" | ^"tail" | ^"join" | ^"eval" | "+" | "-" | "*" | "/" }
+
+atom = { number | boolean | string | symbol } 
+sexpr = { "(" ~ expr* ~ ")"}
+qexpr = { "{" ~ expr* ~ "}"}
+
+
+expr = {atom | sexpr | qexpr}
+
+
+
+slisp = { expr* }
+
+
+//TODO: update symbols to this: symbol = @{ operator | (!operator ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC)*) }
+
+
+
+
+
+
+COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" }

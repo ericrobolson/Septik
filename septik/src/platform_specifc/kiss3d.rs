@@ -1,7 +1,7 @@
 use super::{WindowGfx, *};
 use crate::lib_core::math::Rotation3d;
 
-use crate::ecs::{components::mesh_component, Entity, World};
+use crate::ecs::{components::gfx_components, Entity, World};
 use crate::lib_core::{math::Vec3d, EngineInputs, InputType};
 
 extern crate cgmath;

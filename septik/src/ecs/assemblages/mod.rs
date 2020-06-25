@@ -21,8 +21,8 @@ pub fn assemblage_player(world: &mut World) {
     world.transforms[e] = Some(transform);
     world.velocities[e] = Some(components::VelocityComponent::new());
     world.move_speeds[e] = Some(components::MoveSpeedComponent::new(8.into()));
-    world.meshes[e] = Some(components::MeshComponent::new(
-        components::mesh_component::Mesh::Monkey,
+    world.meshes[e] = Some(components::gfx_components::MeshComponent::new(
+        components::gfx_components::Mesh::Monkey,
     ));
 
     world.third_person_cameras[e] = Some(components::ThirdPersonCameraComponent::new());

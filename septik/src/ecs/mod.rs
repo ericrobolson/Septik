@@ -8,9 +8,9 @@ const MILLISECONDS_IN_SECOND: u64 = 1000;
 
 pub mod components;
 use components::{
-    unit_components::UnitComponent, AabbComponent, AiComponent, AilmentsComponent, EnemyComponent,
-    EngineInputsComponent, FacingComponent, GdNodeComponent, HitPointComponent, MeshComponent,
-    MoveSpeedComponent, PlayerComponent, TargetComponent, TargetableComponent,
+    gfx_components::MeshComponent, unit_components::UnitComponent, AabbComponent, AiComponent,
+    AilmentsComponent, EnemyComponent, EngineInputsComponent, FacingComponent, GdNodeComponent,
+    HitPointComponent, MoveSpeedComponent, PlayerComponent, TargetComponent, TargetableComponent,
     ThirdPersonCameraComponent, TransformComponent, VelocityComponent, VoxelChunkComponent,
 };
 

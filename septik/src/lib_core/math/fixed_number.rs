@@ -1,6 +1,8 @@
 use fixed::types::I20F12;
 type fix = I20F12;
 
+use std::str::FromStr;
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct FixedNumber {
     value: fix,
@@ -45,6 +47,12 @@ impl FixedNumber {
         }
 
         a
+    }
+
+    pub fn from_str(s: String) -> Self {
+        Self {
+            value: fix::from_str(s.as_str()).unwrap(),
+        }
     }
 
     fn from_i32(number: i32) -> Self {

@@ -1,0 +1,16 @@
+sexpr = { atom | list } // Done?
+atom = { number | boolean | symbol | string } // Done?
+number = ${ ("-")? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? } // Done?
+boolean = { ^"true" | "false" }
+string = { "\"" ~ (!"\"" ~ ANY)*  ~ "\"" } // Done? May need to strip out apostrophes?
+symbol = @{ operator | (!operator ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC)*) }
+
+reserved = { "\"" | operator | boolean | "(" | ")" }
+
+operator = { "+" | "-" | "*" | "/" }
+
+list = { "(" ~ (sexpr ~ (sexpr)*)? ~ ")" }
+
+program = { list }
+COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
