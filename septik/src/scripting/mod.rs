@@ -31,7 +31,6 @@ macro_rules! str_err {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Atom {
     Empty,
-    List(Vec<Atom>),
     Bool(bool),
     Number(FixedNumber),
     Str(String),
@@ -88,6 +87,48 @@ impl Slisp {
 
         // Join up all exprs into one for evaluating
         Ok(Expr::Sexpr(exprs))
+    }
+
+    pub fn print(&self, expr: &Expr) -> String {
+        match expr {
+            Expr::Atom(a) => {
+                return match a {
+                    Atom::Bool(b) => format!("{}", b),
+                    Atom::Empty => format!("()"),
+                    Atom::Number(n) => format!("{:?}", (Into::<f32>::into(*n))),
+                    Atom::Str(s) => s.to_string(),
+                    Atom::Symbol(s) => s.to_string(),
+                };
+            }
+            Expr::Qexpr(exprs) => {
+                let mut s = String::from("{");
+                for (i, expr) in exprs.iter().enumerate() {
+                    if i == 0 {
+                        s = format!("{}{}", s, self.print(expr));
+                    } else {
+                        s = format!("{} {}", s, self.print(expr));
+                    }
+                }
+
+                s = format!("{}}}", s);
+
+                return s;
+            }
+            Expr::Sexpr(exprs) => {
+                let mut s = String::from("(");
+                for (i, expr) in exprs.iter().enumerate() {
+                    if i == 0 {
+                        s = format!("{}{}", s, self.print(expr));
+                    } else {
+                        s = format!("{} {}", s, self.print(expr));
+                    }
+                }
+
+                s = format!("{})", s);
+
+                return s;
+            }
+        };
     }
 
     pub fn eval(&mut self, expr: Expr) -> Result<Expr, String> {
@@ -176,6 +217,18 @@ enum NumberOp {
     Divide,
 }
 
+fn env_get(key: String, env: &mut HashMap<String, Expr>) -> Result<Expr, String> {
+    let val = env.get(&key);
+    match val {
+        Some(v) => {
+            return Ok(v.clone());
+        }
+        None => {
+            return str_err!("Undefined symbol {}!", key);
+        }
+    }
+}
+
 fn built_in_number_ops(
     op: NumberOp,
     others: Vec<Expr>,
@@ -200,8 +253,9 @@ fn built_in_number_ops(
                         }
                         _ => {
                             return str_err!(
-                                "EVAL: Symbol '{:?}' may only be applied to Numbers!",
-                                op
+                                "EVAL: Symbol '{:?}' may only be applied to Numbers! Passed in {:?}",
+                                op,
+                                a
                             );
                         }
                     }
@@ -210,8 +264,27 @@ fn built_in_number_ops(
             Expr::Atom(Atom::Number(n)) => {
                 vals.push(n);
             }
+            Expr::Atom(Atom::Symbol(s)) => {
+                let v = env_get(s.to_string(), env)?;
+                match v {
+                    Expr::Atom(Atom::Number(n)) => {
+                        vals.push(n);
+                    }
+                    _ => {
+                        return str_err!(
+                            "EVAL: Symbol '{:?}' may only be applied to Numbers! Passed in {:?}",
+                            op,
+                            v
+                        );
+                    }
+                }
+            }
             _ => {
-                return str_err!("EVAL: Symbol '{:?}' may only be applied to Numbers!", op);
+                return str_err!(
+                    "EVAL: Symbol '{:?}' may only be applied to Numbers! Passed in {:?}",
+                    op,
+                    val
+                );
             }
         }
     }
@@ -425,7 +498,7 @@ fn built_in_qexpr_op(
     }
 }
 
-fn env_get(
+fn eval_symbol(
     symbol: Expr,
     others: Vec<Expr>,
     env: &mut HashMap<String, Expr>,
@@ -460,20 +533,76 @@ fn env_get(
                 return built_in_qexpr_op(QexprOp::Eval, others, env);
             }
             "def" => {
-                if others.len() != 2 {
-                    return str_err!("EXECUTION: 'def' requires 2 arguments!");
+                const min_args: usize = 2;
+                if others.len() < min_args {
+                    return str_err!("EXECUTION: 'def' requires at least {} arguments!", min_args);
                 }
 
-                let first = &others[0];
-                let second = &others[1];
+                let mut others = others.clone();
 
-                let arg = match first {
-                    Expr::Atom(Atom::Symbol(s)) => Ok(s),
-                    _ => str_err!("def not passed a symbol!"),
+                let first = others.remove(0);
+
+                let args = match first {
+                    Expr::Qexpr(vals) => {
+                        let mut symbols = vec![];
+                        for (i, val) in vals.iter().enumerate() {
+                            match val {
+                                Expr::Atom(Atom::Symbol(symbol)) => {
+                                    symbols.push(symbol.clone());
+                                }
+                                _ => {
+                                    return str_err!(
+                                    "EXECUTION: 'def' passed a non-symbol definition at index {}!",
+                                    i
+                                );
+                                }
+                            }
+                        }
+                        Ok(symbols)
+                    }
+                    Expr::Atom(Atom::Symbol(s)) => {
+                        let val = env_get(s, env)?;
+                        let val = eval(val, env)?;
+                        let mut symbols = vec![];
+
+                        match val {
+                            Expr::Qexpr(vals) => {
+                                for (i, val) in vals.iter().enumerate() {
+                                    match val {
+                                        Expr::Atom(Atom::Symbol(symbol)) => {
+                                            symbols.push(symbol.clone());
+                                        }
+                                        _ => {
+                                            return str_err!(
+                                        "EXECUTION: 'def' passed a non-symbol definition at index {}!",
+                                        i
+                                    );
+                                        }
+                                    }
+                                }
+                                Ok(symbols)
+                            }
+                            _ => str_err!("EXECUTION: 'def' not passed a Qexpr!"),
+                        }
+                    }
+                    _ => str_err!("EXECUTION: 'def' not passed a Qexpr!"),
                 }?;
 
-                env.insert(arg.to_string(), second.clone());
-                return Ok(Expr::Atom(Atom::Empty));
+                if args.is_empty() {
+                    //TODO: error
+                }
+
+                if args.len() != others.len() {
+                    //TODO: error
+                }
+
+                for (key, value) in args.iter().zip(others) {
+                    env_put(key.to_string(), value, env);
+                }
+
+                //TODO: insert into env
+                //env.insert(arg.to_string(), second.clone());
+                return Ok(Expr::Sexpr(vec![]));
             }
 
             _ => {
@@ -489,10 +618,17 @@ fn env_get(
                 }
             }
         },
+        Expr::Atom(_) => {
+            return Ok(symbol);
+        }
         _ => {
             return str_err!("EXECUTION: Unhandled ENV Get '{:?}'!", symbol);
         }
     }
+}
+
+fn env_put(key: String, expr: Expr, env: &mut HashMap<String, Expr>) {
+    env.insert(key, expr);
 }
 
 fn eval(expr: Expr, env: &mut HashMap<String, Expr>) -> Result<Expr, String> {
@@ -514,8 +650,7 @@ fn eval(expr: Expr, env: &mut HashMap<String, Expr>) -> Result<Expr, String> {
 
             let first = eval(first, env)?;
 
-            return env_get(first, atoms, env);
-            unimplemented!("What are you doing here?");
+            return eval_symbol(first, atoms, env);
         }
     }
 
@@ -525,6 +660,190 @@ fn eval(expr: Expr, env: &mut HashMap<String, Expr>) -> Result<Expr, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn init() -> Slisp {
+        let slisp = Slisp::new();
+        return slisp;
+    }
+
+    fn num(num: FixedNumber) -> Expr {
+        Expr::Atom(Atom::Number(num))
+    }
+
+    fn qexpr(exprs: Vec<Expr>) -> Expr {
+        Expr::Qexpr(exprs)
+    }
+
+    fn sym(s: &'static str) -> Expr {
+        Expr::Atom(Atom::Symbol(s.to_string()))
+    }
+
+    fn sexpr(exprs: Vec<Expr>) -> Expr {
+        Expr::Sexpr(exprs)
+    }
+
+    #[test]
+    fn Slisp_eval_builtin_eval_head() {
+        let mut slisp = init();
+
+        let expected = num(3.into());
+        let input = String::from("eval (head {(+ 1 2) (+ 10 20)})");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn Slisp_eval_builtin_eval_tail() {
+        let mut slisp = init();
+
+        let expected = qexpr(vec![num(6.into()), num(7.into())]);
+        let input = String::from("eval (tail {tail tail {5 6 7}})");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn Slisp_eval_builtin_tail() {
+        let mut slisp = init();
+
+        let expected = qexpr(vec![sym("tail"), sym("tail")]);
+        let input = String::from("tail {tail tail tail}");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn Slisp_eval_builtin_eval_list_head() {
+        let mut slisp = init();
+
+        let expected = num(1.into());
+        let input = String::from("eval {head (list 1 2 3 4)}");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn Slisp_eval_builtin_list_head() {
+        let mut slisp = init();
+
+        let expected = qexpr(vec![
+            sym("head"),
+            sexpr(vec![
+                sym("list"),
+                num(1.into()),
+                num(2.into()),
+                num(3.into()),
+                num(4.into()),
+            ]),
+        ]);
+        let input = String::from("{head (list 1 2 3 4)}");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn Slisp_eval_builtin_list() {
+        let mut slisp = init();
+
+        let expected = qexpr(vec![
+            num(1.into()),
+            num(2.into()),
+            num(3.into()),
+            num(4.into()),
+        ]);
+        let input = String::from("list 1 2 3 4");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn Slisp_eval_qexpr_test_3() {
+        let mut slisp = init();
+
+        let expected = qexpr(vec![
+            qexpr(vec![num(2.into()), num(3.into()), num(4.into())]),
+            qexpr(vec![num(1.into())]),
+        ]);
+        let input = String::from("{{2 3 4} {1}}");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn Slisp_eval_qexpr_test_2() {
+        let mut slisp = init();
+
+        let expected = qexpr(vec![
+            num(1.into()),
+            num(2.into()),
+            qexpr(vec![sym("+"), num(5.into()), num(6.into())]),
+            num(4.into()),
+        ]);
+        let input = String::from("{1 2 (+ 5 6) 4}");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn Slisp_eval_qexpr_test_1() {
+        let mut slisp = init();
+
+        let expected = Expr::Qexpr(vec![
+            num(1.into()),
+            num(2.into()),
+            num(3.into()),
+            num(4.into()),
+        ]);
+        let input = String::from("{1 2 3 4}");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn Slisp_eval_divide_empty_returns_err() {
+        let mut slisp = init();
+        let input = String::from("/ ()");
+        let actual = slisp.eval(slisp.read_str(input).unwrap());
+        let actual = actual.unwrap_err();
+
+        assert_eq!(
+            String::from(
+                "EVAL: Symbol \'Divide\' may only be applied to Numbers! Passed in Atom(Empty)"
+            ),
+            actual
+        );
+    }
+
+    #[test]
+    fn Slisp_eval_minus_one_num_returns_negative_num() {
+        let mut slisp = init();
+
+        let expected = Expr::Atom(Atom::Number((-100).into()));
+        let input = String::from("(- 100)");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn Slisp_eval_complex_math_statement_returns_expected() {
+        let mut slisp = init();
+
+        let expected = Expr::Atom(Atom::Number(39.into()));
+        let input = String::from("+ 1 (* 7 5) 3");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+
+        assert_eq!(expected, actual);
+    }
 
     #[test]
     fn Slisp_eval_sexpr_divide_4_0_returns_err() {
@@ -776,15 +1095,6 @@ mod tests {
         let mut env = default_env();
 
         let expected = Expr::Atom(Atom::Empty);
-        let actual = eval(expected.clone(), &mut env).unwrap();
-        assert_eq!(expected, actual);
-    }
-
-    #[test]
-    fn Slisp_eval_single_atom_list_returns_list_atom() {
-        let mut env = default_env();
-
-        let expected = Expr::Atom(Atom::List(vec![]));
         let actual = eval(expected.clone(), &mut env).unwrap();
         assert_eq!(expected, actual);
     }

@@ -35,6 +35,8 @@ fn main() {
                         match eval {
                             Ok(value) => {
                                 println!("EVAL: {:?}", value);
+                                println!("Pretty: ");
+                                println!("{}", slisp.print(&value));
                             }
                             Err(error) => {
                                 println!("!! -> {}", error);
