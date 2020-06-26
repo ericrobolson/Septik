@@ -45,14 +45,19 @@ pub enum Expr {
     Qexpr(Vec<Expr>),
 }
 
+fn default_env() -> HashMap<String, Expr> {
+    let mut env = HashMap::<String, Expr>::new();
+    return env;
+}
+
 pub struct Slisp {
-    environment: HashMap<String, bool>,
+    environment: HashMap<String, Expr>,
 }
 
 impl Slisp {
     pub fn new() -> Self {
         Self {
-            environment: HashMap::new(),
+            environment: default_env(),
         }
     }
 
@@ -86,7 +91,7 @@ impl Slisp {
     }
 
     pub fn eval(&mut self, expr: Expr) -> Result<Expr, String> {
-        return eval(expr);
+        return eval(expr, &mut self.environment);
     }
 }
 
@@ -171,16 +176,37 @@ enum NumberOp {
     Divide,
 }
 
-fn built_in_number_ops(op: NumberOp, others: Vec<Expr>) -> Result<Expr, String> {
+fn built_in_number_ops(
+    op: NumberOp,
+    others: Vec<Expr>,
+    env: &mut HashMap<String, Expr>,
+) -> Result<Expr, String> {
     // Evalutation: http://www.buildyourownlisp.com/chapter9_s_expressions
 
     // Validate all items are numbers; TODO: ADD TESTS
     let mut vals = vec![];
 
     for other in others {
-        let val = eval(other)?;
+        let val = eval(other, env)?;
 
         match val {
+            Expr::Sexpr(s) => {
+                for expr in s {
+                    let a = eval(expr, env)?;
+
+                    match a {
+                        Expr::Atom(Atom::Number(n)) => {
+                            vals.push(n);
+                        }
+                        _ => {
+                            return str_err!(
+                                "EVAL: Symbol '{:?}' may only be applied to Numbers!",
+                                op
+                            );
+                        }
+                    }
+                }
+            }
             Expr::Atom(Atom::Number(n)) => {
                 vals.push(n);
             }
@@ -264,7 +290,11 @@ enum QexprOp {
     Eval,
 }
 
-fn built_in_qexpr_op(op: QexprOp, others: Vec<Expr>) -> Result<Expr, String> {
+fn built_in_qexpr_op(
+    op: QexprOp,
+    others: Vec<Expr>,
+    env: &mut HashMap<String, Expr>,
+) -> Result<Expr, String> {
     match op {
         QexprOp::Head => {
             check!(
@@ -365,7 +395,7 @@ fn built_in_qexpr_op(op: QexprOp, others: Vec<Expr>) -> Result<Expr, String> {
                 Expr::Qexpr(vals) => {
                     let expr = Expr::Sexpr(vals.clone());
 
-                    return eval(expr);
+                    return eval(expr, env);
                 }
                 _ => {
                     return str_err!("EVAL: Qexpr op '{:?}' not implemented for {:?}!", op, other);
@@ -395,7 +425,77 @@ fn built_in_qexpr_op(op: QexprOp, others: Vec<Expr>) -> Result<Expr, String> {
     }
 }
 
-fn eval(expr: Expr) -> Result<Expr, String> {
+fn env_get(
+    symbol: Expr,
+    others: Vec<Expr>,
+    env: &mut HashMap<String, Expr>,
+) -> Result<Expr, String> {
+    match symbol {
+        Expr::Atom(Atom::Symbol(s)) => match s.as_str() {
+            "+" => {
+                return built_in_number_ops(NumberOp::Plus, others, env);
+            }
+            "-" => {
+                return built_in_number_ops(NumberOp::Minus, others, env);
+            }
+            "*" => {
+                return built_in_number_ops(NumberOp::Multiply, others, env);
+            }
+            "/" => {
+                return built_in_number_ops(NumberOp::Divide, others, env);
+            }
+            "list" => {
+                return built_in_qexpr_op(QexprOp::List, others, env);
+            }
+            "head" => {
+                return built_in_qexpr_op(QexprOp::Head, others, env);
+            }
+            "tail" => {
+                return built_in_qexpr_op(QexprOp::Tail, others, env);
+            }
+            "join" => {
+                return built_in_qexpr_op(QexprOp::Join, others, env);
+            }
+            "eval" => {
+                return built_in_qexpr_op(QexprOp::Eval, others, env);
+            }
+            "def" => {
+                if others.len() != 2 {
+                    return str_err!("EXECUTION: 'def' requires 2 arguments!");
+                }
+
+                let first = &others[0];
+                let second = &others[1];
+
+                let arg = match first {
+                    Expr::Atom(Atom::Symbol(s)) => Ok(s),
+                    _ => str_err!("def not passed a symbol!"),
+                }?;
+
+                env.insert(arg.to_string(), second.clone());
+                return Ok(Expr::Atom(Atom::Empty));
+            }
+
+            _ => {
+                let val = env.get(&s);
+
+                match val {
+                    Some(v) => {
+                        return Ok(v.clone());
+                    }
+                    None => {
+                        return str_err!("EXECUTION: Unhandled GET '{:?}'!", s);
+                    }
+                }
+            }
+        },
+        _ => {
+            return str_err!("EXECUTION: Unhandled ENV Get '{:?}'!", symbol);
+        }
+    }
+}
+
+fn eval(expr: Expr, env: &mut HashMap<String, Expr>) -> Result<Expr, String> {
     match expr {
         Expr::Atom(atom) => {
             return Ok(Expr::Atom(atom));
@@ -408,55 +508,13 @@ fn eval(expr: Expr) -> Result<Expr, String> {
                 return Ok(Expr::Atom(Atom::Empty));
             }
 
-            if atoms.len() == 1 {
-                let atom = eval(atoms.first().unwrap().clone())?;
-
-                return Ok(atom);
-            }
-
             let mut atoms = atoms.clone();
 
             let first = atoms.remove(0);
 
-            let first = eval(first)?;
+            let first = eval(first, env)?;
 
-            match first {
-                Expr::Atom(Atom::Symbol(s)) => match s.as_str() {
-                    "+" => {
-                        return built_in_number_ops(NumberOp::Plus, atoms);
-                    }
-                    "-" => {
-                        return built_in_number_ops(NumberOp::Minus, atoms);
-                    }
-                    "*" => {
-                        return built_in_number_ops(NumberOp::Multiply, atoms);
-                    }
-                    "/" => {
-                        return built_in_number_ops(NumberOp::Divide, atoms);
-                    }
-                    "list" => {
-                        return built_in_qexpr_op(QexprOp::List, atoms);
-                    }
-                    "head" => {
-                        return built_in_qexpr_op(QexprOp::Head, atoms);
-                    }
-                    "tail" => {
-                        return built_in_qexpr_op(QexprOp::Tail, atoms);
-                    }
-                    "join" => {
-                        return built_in_qexpr_op(QexprOp::Join, atoms);
-                    }
-                    "eval" => {
-                        return built_in_qexpr_op(QexprOp::Eval, atoms);
-                    }
-                    _ => {
-                        return str_err!("EXECUTION: Unhandled symbol '{}'!", s);
-                    }
-                },
-                _ => {
-                    return str_err!("EXECUTION: Unhandled atom '{:?}'!", first);
-                }
-            }
+            return env_get(first, atoms, env);
             unimplemented!("What are you doing here?");
         }
     }
@@ -470,12 +528,17 @@ mod tests {
 
     #[test]
     fn Slisp_eval_sexpr_divide_4_0_returns_err() {
-        let actual = eval(Expr::Sexpr(vec![
-            Expr::Atom(Atom::Symbol(format!("/"))),
-            Expr::Atom(Atom::Number((8).into())),
-            Expr::Atom(Atom::Number((4).into())),
-            Expr::Atom(Atom::Number((0).into())),
-        ]));
+        let mut env = default_env();
+
+        let actual = eval(
+            Expr::Sexpr(vec![
+                Expr::Atom(Atom::Symbol(format!("/"))),
+                Expr::Atom(Atom::Number((8).into())),
+                Expr::Atom(Atom::Number((4).into())),
+                Expr::Atom(Atom::Number((0).into())),
+            ]),
+            &mut env,
+        );
 
         assert_eq!(true, actual.is_err());
 
@@ -485,206 +548,280 @@ mod tests {
 
     #[test]
     fn Slisp_eval_sexpr_divide_8_4_2_returns_1() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Number((1).into()));
-        let actual = eval(Expr::Sexpr(vec![
+        let expr = Expr::Sexpr(vec![
             Expr::Atom(Atom::Symbol(format!("/"))),
             Expr::Atom(Atom::Number((8).into())),
             Expr::Atom(Atom::Number((4).into())),
             Expr::Atom(Atom::Number((2).into())),
-        ]))
-        .unwrap();
+        ]);
+        let actual = eval(expr, &mut env).unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_sexpr_divide_0_returns_0() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Number((0).into()));
-        let actual = eval(Expr::Sexpr(vec![
+        let expr = Expr::Sexpr(vec![
             Expr::Atom(Atom::Symbol(format!("/"))),
             Expr::Atom(Atom::Number((0).into())),
-        ]))
-        .unwrap();
+        ]);
+
+        let actual = eval(expr, &mut env).unwrap();
+
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_sexpr_multiply_negative5_negative5_returns_25() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Number((25).into()));
-        let actual = eval(Expr::Sexpr(vec![
-            Expr::Atom(Atom::Symbol(format!("*"))),
-            Expr::Atom(Atom::Number((-5).into())),
-            Expr::Atom(Atom::Number((-5).into())),
-        ]))
+        let actual = eval(
+            Expr::Sexpr(vec![
+                Expr::Atom(Atom::Symbol(format!("*"))),
+                Expr::Atom(Atom::Number((-5).into())),
+                Expr::Atom(Atom::Number((-5).into())),
+            ]),
+            &mut env,
+        )
         .unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_sexpr_multiply_negative5_returns_negative5() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Number((-5).into()));
-        let actual = eval(Expr::Sexpr(vec![
-            Expr::Atom(Atom::Symbol(format!("*"))),
-            Expr::Atom(Atom::Number((-5).into())),
-        ]))
+        let actual = eval(
+            Expr::Sexpr(vec![
+                Expr::Atom(Atom::Symbol(format!("*"))),
+                Expr::Atom(Atom::Number((-5).into())),
+            ]),
+            &mut env,
+        )
         .unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_sexpr_multiply_5_returns_5() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Number((5).into()));
-        let actual = eval(Expr::Sexpr(vec![
-            Expr::Atom(Atom::Symbol(format!("*"))),
-            Expr::Atom(Atom::Number(5.into())),
-        ]))
+        let actual = eval(
+            Expr::Sexpr(vec![
+                Expr::Atom(Atom::Symbol(format!("*"))),
+                Expr::Atom(Atom::Number(5.into())),
+            ]),
+            &mut env,
+        )
         .unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_sexpr_multiply_5_2_returns_10() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Number((10).into()));
-        let actual = eval(Expr::Sexpr(vec![
-            Expr::Atom(Atom::Symbol(format!("*"))),
-            Expr::Atom(Atom::Number(5.into())),
-            Expr::Atom(Atom::Number(2.into())),
-        ]))
+        let actual = eval(
+            Expr::Sexpr(vec![
+                Expr::Atom(Atom::Symbol(format!("*"))),
+                Expr::Atom(Atom::Number(5.into())),
+                Expr::Atom(Atom::Number(2.into())),
+            ]),
+            &mut env,
+        )
         .unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_sexpr_subtract_5_2_1_returns_2() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Number((2).into()));
-        let actual = eval(Expr::Sexpr(vec![
-            Expr::Atom(Atom::Symbol(format!("-"))),
-            Expr::Atom(Atom::Number(5.into())),
-            Expr::Atom(Atom::Number(2.into())),
-            Expr::Atom(Atom::Number(1.into())),
-        ]))
+        let actual = eval(
+            Expr::Sexpr(vec![
+                Expr::Atom(Atom::Symbol(format!("-"))),
+                Expr::Atom(Atom::Number(5.into())),
+                Expr::Atom(Atom::Number(2.into())),
+                Expr::Atom(Atom::Number(1.into())),
+            ]),
+            &mut env,
+        )
         .unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_sexpr_subtract_1_2_returns_negative1() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Number((-1).into()));
-        let actual = eval(Expr::Sexpr(vec![
-            Expr::Atom(Atom::Symbol(format!("-"))),
-            Expr::Atom(Atom::Number(1.into())),
-            Expr::Atom(Atom::Number(2.into())),
-        ]))
+        let actual = eval(
+            Expr::Sexpr(vec![
+                Expr::Atom(Atom::Symbol(format!("-"))),
+                Expr::Atom(Atom::Number(1.into())),
+                Expr::Atom(Atom::Number(2.into())),
+            ]),
+            &mut env,
+        )
         .unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_sexpr_subtract_1_returns_negative1() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Number((-1).into()));
-        let actual = eval(Expr::Sexpr(vec![
-            Expr::Atom(Atom::Symbol(format!("-"))),
-            Expr::Atom(Atom::Number(1.into())),
-        ]))
+        let actual = eval(
+            Expr::Sexpr(vec![
+                Expr::Atom(Atom::Symbol(format!("-"))),
+                Expr::Atom(Atom::Number(1.into())),
+            ]),
+            &mut env,
+        )
         .unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_sexpr_add_1_2_5_returns_8() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Number(8.into()));
-        let actual = eval(Expr::Sexpr(vec![
-            Expr::Atom(Atom::Symbol(format!("+"))),
-            Expr::Atom(Atom::Number(1.into())),
-            Expr::Atom(Atom::Number(2.into())),
-            Expr::Atom(Atom::Number(5.into())),
-        ]))
+        let actual = eval(
+            Expr::Sexpr(vec![
+                Expr::Atom(Atom::Symbol(format!("+"))),
+                Expr::Atom(Atom::Number(1.into())),
+                Expr::Atom(Atom::Number(2.into())),
+                Expr::Atom(Atom::Number(5.into())),
+            ]),
+            &mut env,
+        )
         .unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_sexpr_add_1_2_returns_3() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Number(3.into()));
-        let actual = eval(Expr::Sexpr(vec![
-            Expr::Atom(Atom::Symbol(format!("+"))),
-            Expr::Atom(Atom::Number(1.into())),
-            Expr::Atom(Atom::Number(2.into())),
-        ]))
+        let actual = eval(
+            Expr::Sexpr(vec![
+                Expr::Atom(Atom::Symbol(format!("+"))),
+                Expr::Atom(Atom::Number(1.into())),
+                Expr::Atom(Atom::Number(2.into())),
+            ]),
+            &mut env,
+        )
         .unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_sexpr_add_1_returns_1() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Number(1.into()));
-        let actual = eval(Expr::Sexpr(vec![
-            Expr::Atom(Atom::Symbol(format!("+"))),
-            Expr::Atom(Atom::Number(1.into())),
-        ]))
+        let actual = eval(
+            Expr::Sexpr(vec![
+                Expr::Atom(Atom::Symbol(format!("+"))),
+                Expr::Atom(Atom::Number(1.into())),
+            ]),
+            &mut env,
+        )
         .unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_sexpr_single_atom_empty_returns_empty() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Empty);
-        let actual = eval(Expr::Sexpr(vec![expected.clone()])).unwrap();
+        let actual = eval(Expr::Sexpr(vec![expected.clone()]), &mut env).unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_sexpr_single_atom_number_returns_number() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Number(1.into()));
-        let actual = eval(Expr::Sexpr(vec![expected.clone()])).unwrap();
+        let actual = eval(Expr::Sexpr(vec![expected.clone()]), &mut env).unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_sexpr_empty_returns_empty_atom() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Empty);
-        let actual = eval(Expr::Sexpr(vec![])).unwrap();
+        let actual = eval(Expr::Sexpr(vec![]), &mut env).unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_single_atom_empty_returns_empty_atom() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Empty);
-        let actual = eval(expected.clone()).unwrap();
+        let actual = eval(expected.clone(), &mut env).unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_single_atom_list_returns_list_atom() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::List(vec![]));
-        let actual = eval(expected.clone()).unwrap();
+        let actual = eval(expected.clone(), &mut env).unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_single_atom_bool_returns_bool_atom() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Bool(true));
-        let actual = eval(expected.clone()).unwrap();
+        let actual = eval(expected.clone(), &mut env).unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_single_atom_number_returns_number_atom() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Number(1.into()));
-        let actual = eval(expected.clone()).unwrap();
+        let actual = eval(expected.clone(), &mut env).unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_single_atom_str_returns_str_atom() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Str(format!("Hi there!")));
-        let actual = eval(expected.clone()).unwrap();
+        let actual = eval(expected.clone(), &mut env).unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn Slisp_eval_single_atom_symbol_returns_symbol_atom() {
+        let mut env = default_env();
+
         let expected = Expr::Atom(Atom::Symbol(format!("Hi there!")));
-        let actual = eval(expected.clone()).unwrap();
+        let actual = eval(expected.clone(), &mut env).unwrap();
         assert_eq!(expected, actual);
     }
 }
