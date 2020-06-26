@@ -243,41 +243,8 @@ fn built_in_number_ops(
         let val = eval(other, env)?;
 
         match val {
-            Expr::Sexpr(s) => {
-                for expr in s {
-                    let a = eval(expr, env)?;
-
-                    match a {
-                        Expr::Atom(Atom::Number(n)) => {
-                            vals.push(n);
-                        }
-                        _ => {
-                            return str_err!(
-                                "EVAL: Symbol '{:?}' may only be applied to Numbers! Passed in {:?}",
-                                op,
-                                a
-                            );
-                        }
-                    }
-                }
-            }
             Expr::Atom(Atom::Number(n)) => {
                 vals.push(n);
-            }
-            Expr::Atom(Atom::Symbol(s)) => {
-                let v = env_get(s.to_string(), env)?;
-                match v {
-                    Expr::Atom(Atom::Number(n)) => {
-                        vals.push(n);
-                    }
-                    _ => {
-                        return str_err!(
-                            "EVAL: Symbol '{:?}' may only be applied to Numbers! Passed in {:?}",
-                            op,
-                            v
-                        );
-                    }
-                }
             }
             _ => {
                 return str_err!(
@@ -395,13 +362,26 @@ fn built_in_qexpr_op(
                     return Ok(first.clone());
                 }
                 _ => {
-                    return str_err!("EVAL: Qexpr op '{:?}' not implemented for {:?}!", op, other);
+                    let other = eval(other.clone(), env)?;
+
+                    match other {
+                        Expr::Qexpr(_) => {
+                            return built_in_qexpr_op(QexprOp::Eval, vec![other], env);
+                        }
+                        _ => {
+                            return str_err!(
+                                "EVAL: Qexpr op '{:?}' not implemented for {:?}!",
+                                op,
+                                other
+                            );
+                        }
+                    }
                 }
             }
         }
         QexprOp::Tail => {
             check!(
-                others.len() == 1,
+                others.len() != 1,
                 (
                     "EVAL: Qexpr op '{:?}' passed {} args when expecting 1!",
                     op,
@@ -432,6 +412,11 @@ fn built_in_qexpr_op(
             }
         }
         QexprOp::List => {
+            let mut others = others.clone();
+            if others.len() > 1 {
+                others = vec![Expr::Sexpr(others)];
+            }
+
             check!(
                 others.is_empty() || others.len() != 1,
                 (
@@ -454,7 +439,7 @@ fn built_in_qexpr_op(
         }
         QexprOp::Eval => {
             check!(
-                others.is_empty() || others.len() != 1,
+                others.len() != 1,
                 (
                     "EVAL: Qexpr op '{:?}' passed {} args when expecting 1!",
                     op,
@@ -469,6 +454,9 @@ fn built_in_qexpr_op(
                     let expr = Expr::Sexpr(vals.clone());
 
                     return eval(expr, env);
+                }
+                Expr::Sexpr(_) => {
+                    return eval(other.clone(), env);
                 }
                 _ => {
                     return str_err!("EVAL: Qexpr op '{:?}' not implemented for {:?}!", op, other);
@@ -631,6 +619,32 @@ fn env_put(key: String, expr: Expr, env: &mut HashMap<String, Expr>) {
     env.insert(key, expr);
 }
 
+fn eval_sexpr(sexpr_vals: Vec<Expr>, env: &mut HashMap<String, Expr>) -> Result<Expr, String> {
+    let mut vals = vec![];
+    for val in sexpr_vals {
+        let val = eval(val, env)?;
+        vals.push(val);
+    }
+
+    if vals.is_empty() {
+        return Ok(Expr::Sexpr(vals));
+    }
+
+    if vals.len() == 1 {
+        return Ok(vals[0].clone());
+    }
+
+    // Ensure first element is symbol
+    match vals[0] {
+        Expr::Atom(Atom::Symbol(_)) => {}
+        _ => {
+            return str_err!("EVAL: Sexpr doesn't start with a symbol!");
+        }
+    }
+
+    return eval_symbol(vals.remove(0), vals, env);
+}
+
 fn eval(expr: Expr, env: &mut HashMap<String, Expr>) -> Result<Expr, String> {
     match expr {
         Expr::Atom(atom) => {
@@ -640,17 +654,7 @@ fn eval(expr: Expr, env: &mut HashMap<String, Expr>) -> Result<Expr, String> {
             return Ok(Expr::Qexpr(atoms));
         }
         Expr::Sexpr(atoms) => {
-            if atoms.is_empty() {
-                return Ok(Expr::Atom(Atom::Empty));
-            }
-
-            let mut atoms = atoms.clone();
-
-            let first = atoms.remove(0);
-
-            let first = eval(first, env)?;
-
-            return eval_symbol(first, atoms, env);
+            return eval_sexpr(atoms, env);
         }
     }
 
@@ -783,7 +787,7 @@ mod tests {
         let expected = qexpr(vec![
             num(1.into()),
             num(2.into()),
-            qexpr(vec![sym("+"), num(5.into()), num(6.into())]),
+            sexpr(vec![sym("+"), num(5.into()), num(6.into())]),
             num(4.into()),
         ]);
         let input = String::from("{1 2 (+ 5 6) 4}");
@@ -809,7 +813,7 @@ mod tests {
     }
 
     #[test]
-    fn Slisp_eval_divide_empty_returns_err() {
+    fn Slisp_eval_divide_empty_sexpr_returns_err() {
         let mut slisp = init();
         let input = String::from("/ ()");
         let actual = slisp.eval(slisp.read_str(input).unwrap());
@@ -817,7 +821,7 @@ mod tests {
 
         assert_eq!(
             String::from(
-                "EVAL: Symbol \'Divide\' may only be applied to Numbers! Passed in Atom(Empty)"
+                "EVAL: Symbol \'Divide\' may only be applied to Numbers! Passed in Sexpr([])"
             ),
             actual
         );
@@ -1085,7 +1089,7 @@ mod tests {
     fn Slisp_eval_sexpr_empty_returns_empty_atom() {
         let mut env = default_env();
 
-        let expected = Expr::Atom(Atom::Empty);
+        let expected = Expr::Sexpr(vec![]);
         let actual = eval(Expr::Sexpr(vec![]), &mut env).unwrap();
         assert_eq!(expected, actual);
     }
