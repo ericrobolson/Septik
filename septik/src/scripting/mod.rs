@@ -737,6 +737,35 @@ mod tests {
     }
 
     #[test]
+    fn Slisp_eval_functions_case1() {
+        let mut slisp = init();
+        let input = String::from("def {add-mul} (\\ {x y} {+ x (* x y)})");
+        let expected = String::from("()");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+        assert_eq!(expected, slisp.print(&actual));
+
+        let input = String::from("add-mul 10 20");
+        let expected = String::from("210.0");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+        assert_eq!(expected, slisp.print(&actual));
+
+        let input = String::from("add-mul 10");
+        let expected = String::from("(\\ {y} {+ x (* x y)})");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+        assert_eq!(expected, slisp.print(&actual));
+
+        let input = String::from("def {add-mul-ten} (add-mul 10)");
+        let expected = String::from("()");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+        assert_eq!(expected, slisp.print(&actual));
+
+        let input = String::from("add-mul-ten 50");
+        let expected = String::from("510.0");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+        assert_eq!(expected, slisp.print(&actual));
+    }
+
+    #[test]
     fn Slisp_eval_variables_case12() {
         let mut slisp = init();
 
@@ -933,6 +962,17 @@ mod tests {
 
         let expected = String::from("{1.0}");
         let input = String::from("eval {head (list 1 2 3 4)}");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+
+        assert_eq!(expected, slisp.print(&actual));
+    }
+
+    #[test]
+    fn Slisp_eval_builtin_join() {
+        let mut slisp = init();
+
+        let expected = String::from("{1.0 2.0 3.0 {4.0 5.0}}");
+        let input = String::from("join {1 2} {3 {4 5}}");
         let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
 
         assert_eq!(expected, slisp.print(&actual));
