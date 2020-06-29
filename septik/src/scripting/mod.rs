@@ -36,6 +36,7 @@ pub enum Atom {
     Str(String),
     Symbol(String),
     Func(String),
+    Lambda,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -100,6 +101,7 @@ impl Slisp {
                     Atom::Str(s) => s.to_string(),
                     Atom::Func(s) => s.to_string(),
                     Atom::Symbol(s) => s.to_string(),
+                    Atom::Lambda => String::from("\\"),
                 };
             }
             Expr::Qexpr(exprs) => {
@@ -183,8 +185,16 @@ fn read(pair: pest::iterators::Pair<Rule>) -> Result<Expr, String> {
         Rule::symbol => {
             let val = pair.as_str().to_ascii_lowercase();
 
-            if get_builtin(val.clone()).is_some() {
-                return Ok(Expr::Atom(Atom::Func(val)));
+            let builtin = get_builtin(val.clone());
+            if builtin.is_some() {
+                match builtin.unwrap() {
+                    BuiltIn::Lambda => {
+                        return Ok(Expr::Atom(Atom::Lambda));
+                    }
+                    _ => {
+                        return Ok(Expr::Atom(Atom::Func(val)));
+                    }
+                }
             }
 
             return Ok(Expr::Atom(Atom::Symbol(val)));
@@ -488,9 +498,9 @@ fn built_in_qexpr_op(
             return Ok(Expr::Qexpr(exprs));
         }
         QexprOp::Def => {
-            const min_args: usize = 2;
-            if others.len() < min_args {
-                return str_err!("EXECUTION: 'def' requires at least {} arguments!", min_args);
+            const MIN_ARGS: usize = 2;
+            if others.len() < MIN_ARGS {
+                return str_err!("EXECUTION: 'def' requires at least {} arguments!", MIN_ARGS);
             }
 
             let mut others = others.clone();
@@ -544,11 +554,11 @@ fn built_in_qexpr_op(
             }?;
 
             if args.is_empty() {
-                //TODO: error
+                return str_err!("EXECUTION: 'def' passed 0 args!");
             }
 
             if args.len() != others.len() {
-                //TODO: error
+                return str_err!("EXECUTION: 'def' args don't match!");
             }
 
             for (key, value) in args.iter().zip(others) {
@@ -564,6 +574,7 @@ fn built_in_qexpr_op(
 pub enum BuiltIn {
     Number(NumberOp),
     Qexpr(QexprOp),
+    Lambda,
 }
 
 fn get_builtin(symbol: String) -> Option<BuiltIn> {
@@ -598,6 +609,9 @@ fn get_builtin(symbol: String) -> Option<BuiltIn> {
         "def" => {
             return Some(BuiltIn::Qexpr(QexprOp::Def));
         }
+        "\\" => {
+            return Some(BuiltIn::Lambda);
+        }
         _ => {
             return None;
         }
@@ -615,6 +629,9 @@ fn eval_builtin(
         }
         BuiltIn::Qexpr(op) => {
             return built_in_qexpr_op(op, others, env);
+        }
+        BuiltIn::Lambda => {
+            unimplemented!();
         }
     }
 }
@@ -761,6 +778,30 @@ mod tests {
 
         let input = String::from("add-mul-ten 50");
         let expected = String::from("510.0");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+        assert_eq!(expected, slisp.print(&actual));
+    }
+
+    #[test]
+    fn Slisp_eval_functions_case0() {
+        let mut slisp = init();
+        let input = String::from("\\ {x y} {+ x y}");
+        let expected = String::from("()");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+        assert_eq!(expected, slisp.print(&actual));
+
+        let input = String::from("(\\ {x y} {+ x y}) 10 20");
+        let expected = String::from("30.0");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+        assert_eq!(expected, slisp.print(&actual));
+
+        let input = String::from("def {add-together} (\\ {x y} {+ x y})");
+        let expected = String::from("()");
+        let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
+        assert_eq!(expected, slisp.print(&actual));
+
+        let input = String::from("add-together 10 20");
+        let expected = String::from("30.0");
         let actual = slisp.eval(slisp.read_str(input).unwrap()).unwrap();
         assert_eq!(expected, slisp.print(&actual));
     }
